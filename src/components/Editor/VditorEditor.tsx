@@ -447,8 +447,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           return null;
         },
       },
-      // Tab行为配置：使用空格而非制表符，避免触发代码块
-      tab: '    ', // 4个空格
+      // Tab行为配置：由自定义 handler 处理，这里禁用
+      tab: '',
       // 初始值
       value: contentRef.current,
       // 内容变化回调
@@ -464,7 +464,10 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           return true;
         }
         
-        // Tab 键处理已移到 after 回调中，使用 document 级别监听
+        // Tab 键 - 由 capture handler 处理，这里阻止 Vditor 默认行为
+        if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey) {
+          return true;
+        }
         
         // 表格内按Enter时显示快捷键提示
         if (event.key === 'Enter' && !event.ctrlKey && !event.shiftKey) {
@@ -548,13 +551,14 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
             // 不在表格内，插入缩进
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation(); // 阻止其他 handler
             isTabPressed = true;
             lastTabTime = Date.now();
             
-            // 直接插入缩进（1个全角空格 = 1个汉字宽度）
+            // 直接插入缩进（2个全角空格 = 2个汉字宽度）
             if (selection && selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
-              const textNode = document.createTextNode('　'); // 1个全角空格
+              const textNode = document.createTextNode('　　'); // 2个全角空格
               range.insertNode(textNode);
               range.setStartAfter(textNode);
               range.collapse(true);
@@ -589,7 +593,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
                   if (now - lastTabTime < 100) {
                     console.log('[MutationObserver] 检测到 Tab 触发的代码块，移除并插入缩进');
                     node.remove();
-                    vditorRef.current?.insertValue('　'); // 1个全角空格
+                    vditorRef.current?.insertValue('　　'); // 2个全角空格
                   }
                 }
               }

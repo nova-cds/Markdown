@@ -68,7 +68,7 @@ export const useFileOperations = () => {
     }
   }, [openDocument]);
 
-  // 递归读取目录（浏览器环境）
+  // 读取目录（浏览器环境，只读取一级，不递归）
   const readDirectoryRecursive = useCallback(async (dirHandle: FileSystemDirectoryHandle, basePath: string): Promise<TreeNode[]> => {
     const nodes: TreeNode[] = [];
     
@@ -85,13 +85,15 @@ export const useFileOperations = () => {
           handle: entry
         });
       } else if (entry.kind === 'directory') {
-        const childNodes = await readDirectoryRecursive(entry as FileSystemDirectoryHandle, nodePath);
+        // 保存子目录的 handle，用于延迟加载
+        setDirHandle(nodePath, entry as FileSystemDirectoryHandle);
+        // 不递归读取子目录，延迟加载
         nodes.push({
           name: entry.name,
           path: nodePath,
           isDir: true,
           handle: entry,
-          children: childNodes
+          children: [] // 空数组，表示未加载
         });
       }
     }
@@ -105,7 +107,7 @@ export const useFileOperations = () => {
     return nodes;
   }, [setDirHandle]);
 
-  // 从 Tauri 读取目录
+  // 从 Tauri 读取目录（只读取一级，不递归）
   const readDirectoryTauri = useCallback(async (dirPath: string): Promise<TreeNode[]> => {
     const { readDir } = await import('@tauri-apps/plugin-fs');
     const nodes: TreeNode[] = [];
@@ -126,13 +128,13 @@ export const useFileOperations = () => {
             handle: undefined
           });
         } else if (entry.isDirectory) {
-          const childNodes = await readDirectoryTauri(nodePath);
+          // 不递归读取子目录，延迟加载
           nodes.push({
             name: entry.name,
             path: nodePath,
             isDir: true,
             handle: undefined,
-            children: childNodes
+            children: [] // 空数组，表示未加载
           });
         }
       }

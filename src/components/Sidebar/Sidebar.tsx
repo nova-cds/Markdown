@@ -152,14 +152,53 @@ export const Sidebar: React.FC = () => {
     }
   };
 
-  const toggleDir = (path: string) => {
+  const toggleDir = async (path: string, node?: TreeNode) => {
     const newExpanded = new Set(expandedDirs);
+    
     if (newExpanded.has(path)) {
       newExpanded.delete(path);
+      setExpandedDirs(newExpanded);
     } else {
       newExpanded.add(path);
+      setExpandedDirs(newExpanded);
+      
+      // 检查是否需要加载子目录（延迟加载）
+      if (node && node.isDir && (!node.children || node.children.length === 0)) {
+        console.log('[toggleDir] 延迟加载子目录:', path);
+        try {
+          let children: TreeNode[];
+          
+          if (isTauriCached()) {
+            children = await readDirectoryTauri(path);
+          } else {
+            const dirHandle = dirHandles.get(path);
+            if (dirHandle) {
+              children = await readDirectoryRecursive(dirHandle, path);
+            } else {
+              children = [];
+            }
+          }
+          
+          // 更新 fileTree 中对应节点的 children
+          const updateNodeChildren = (nodes: TreeNode[], targetPath: string, newChildren: TreeNode[]): TreeNode[] => {
+            return nodes.map(n => {
+              if (n.path === targetPath) {
+                return { ...n, children: newChildren };
+              }
+              if (n.children) {
+                return { ...n, children: updateNodeChildren(n.children, targetPath, newChildren) };
+              }
+              return n;
+            });
+          };
+          
+          setFileTree(updateNodeChildren(fileTree, path, children));
+          console.log('[toggleDir] 子目录加载完成:', path, '子项数量:', children.length);
+        } catch (err) {
+          console.error('[toggleDir] 加载子目录失败:', err);
+        }
+      }
     }
-    setExpandedDirs(newExpanded);
   };
 
   // 右键菜单
@@ -536,7 +575,7 @@ export const Sidebar: React.FC = () => {
             onClick={() => {
               if (node.isDir) {
                 setSelectedDir(node.path);
-                toggleDir(node.path);
+                toggleDir(node.path, node);
               } else {
                 handleFileClick(node);
               }
