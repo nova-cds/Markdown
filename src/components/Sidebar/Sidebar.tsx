@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useFileStore, useEditorStore, TreeNode } from '../../stores';
 import { useFileOperations } from '../../hooks/useFileOperations';
+import { isTauri } from '../../utils/platform';
 import {
   Folder,
   FolderOpen,
@@ -40,7 +41,7 @@ interface NewDirState {
 export const Sidebar: React.FC = () => {
   const { fileTree, rootPath, setFileTree, setFileHandle, setDirHandle, rootHandle, dirHandles } = useFileStore();
   const { openDocument, renameDocument, documents } = useEditorStore();
-  const { readDirectoryRecursive } = useFileOperations();
+  const { readDirectoryRecursive, readDirectoryTauri } = useFileOperations();
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -90,19 +91,25 @@ export const Sidebar: React.FC = () => {
     if (!node.isDir) {
       const docPath = `file://${node.path}`;
 
-      if (node.handle && node.handle.kind === 'file') {
-        setFileHandle(node.path, node.handle);
-      }
-
-      if (node.handle && node.handle.kind === 'file') {
-        try {
-          const file = await node.handle.getFile();
-          const content = await file.text();
+      try {
+        if (isTauri()) {
+          // Tauri 环境
+          const { readTextFile } = await import('@tauri-apps/plugin-fs');
+          const content = await readTextFile(node.path);
           openDocument(docPath, content, false);
           console.log(`[FileClick] 从文件系统加载: ${node.path}`);
-        } catch (err) {
-          console.error('读取文件失败:', err);
+        } else {
+          // 浏览器环境
+          if (node.handle && node.handle.kind === 'file') {
+            setFileHandle(node.path, node.handle);
+            const file = await node.handle.getFile();
+            const content = await file.text();
+            openDocument(docPath, content, false);
+            console.log(`[FileClick] 从文件系统加载: ${node.path}`);
+          }
         }
+      } catch (err) {
+        console.error('读取文件失败:', err);
       }
     }
   };
@@ -164,31 +171,49 @@ export const Sidebar: React.FC = () => {
 
     const { parentPath } = newFileState;
     const finalName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
-    const dirHandle = dirHandles.get(parentPath) || rootHandle;
-
-    if (!dirHandle) {
-      alert('无法获取目录句柄，请重新打开文件夹');
-      setNewFileState(null);
-      return;
-    }
+    const filePath = `${parentPath}/${finalName}`;
+    const defaultContent = `# ${finalName.replace('.md', '')}\n\n在这里开始写作...\n`;
 
     try {
-      const fileHandle = await dirHandle.getFileHandle(finalName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(`# ${finalName.replace('.md', '')}\n\n在这里开始写作...\n`);
-      await writable.close();
+      if (isTauri()) {
+        // Tauri 环境
+        const { writeFile } = await import('@tauri-apps/plugin-fs');
+        const encoder = new TextEncoder();
+        await writeFile(filePath, encoder.encode(defaultContent));
+        
+        // 刷新文件树
+        const tree = await readDirectoryTauri(rootPath!);
+        setFileTree(tree);
+        
+        // 打开新文件
+        openDocument(`file://${filePath}`, defaultContent, false);
+        console.log(`[NewFile] 创建文件成功: ${finalName}`);
+      } else {
+        // 浏览器环境
+        const dirHandle = dirHandles.get(parentPath) || rootHandle;
+        if (!dirHandle) {
+          alert('无法获取目录句柄，请重新打开文件夹');
+          setNewFileState(null);
+          return;
+        }
 
-      setFileHandle(finalName, fileHandle);
+        const fileHandle = await dirHandle.getFileHandle(finalName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(defaultContent);
+        await writable.close();
 
-      const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
-      setFileTree(tree);
+        setFileHandle(finalName, fileHandle);
 
-      const docPath = `file://${parentPath}/${finalName}`;
-      const file = await fileHandle.getFile();
-      const content = await file.text();
-      openDocument(docPath, content, false);
+        const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
+        setFileTree(tree);
 
-      console.log(`[NewFile] 创建文件成功: ${finalName}`);
+        const docPath = `file://${parentPath}/${finalName}`;
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        openDocument(docPath, content, false);
+
+        console.log(`[NewFile] 创建文件成功: ${finalName}`);
+      }
     } catch (err) {
       console.error('[NewFile] 创建文件失败:', err);
       alert('创建文件失败');
@@ -222,29 +247,42 @@ export const Sidebar: React.FC = () => {
     }
 
     const { parentPath } = newDirState;
-    const dirHandle = dirHandles.get(parentPath) || rootHandle;
-
-    if (!dirHandle) {
-      alert('无法获取目录句柄，请重新打开文件夹');
-      setNewDirState(null);
-      return;
-    }
+    const dirPath = `${parentPath}/${dirName}`;
 
     try {
-      const newDirHandle = await dirHandle.getDirectoryHandle(dirName, { create: true });
-      const newDirPath = `${parentPath}/${dirName}`;
-      setDirHandle(newDirPath, newDirHandle);
+      if (isTauri()) {
+        // Tauri 环境
+        const { mkdir } = await import('@tauri-apps/plugin-fs');
+        await mkdir(dirPath);
+        
+        // 刷新文件树
+        const tree = await readDirectoryTauri(rootPath!);
+        setFileTree(tree);
+        
+        console.log(`[NewDir] 创建目录成功: ${dirName}`);
+      } else {
+        // 浏览器环境
+        const dirHandle = dirHandles.get(parentPath) || rootHandle;
+        if (!dirHandle) {
+          alert('无法获取目录句柄，请重新打开文件夹');
+          setNewDirState(null);
+          return;
+        }
 
-      const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
-      setFileTree(tree);
+        const newDirHandle = await dirHandle.getDirectoryHandle(dirName, { create: true });
+        setDirHandle(dirPath, newDirHandle);
+
+        const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
+        setFileTree(tree);
+
+        console.log(`[NewDir] 创建目录成功: ${dirName}`);
+      }
 
       setExpandedDirs(prev => {
         const newSet = new Set(prev);
         newSet.add(parentPath);
         return newSet;
       });
-
-      console.log(`[NewDir] 创建目录成功: ${dirName}`);
     } catch (err) {
       console.error('[NewDir] 创建目录失败:', err);
       alert('创建目录失败: ' + (err as Error).message);
@@ -266,7 +304,7 @@ export const Sidebar: React.FC = () => {
 
     if (newName && newName !== oldName) {
       const finalName = newName.endsWith('.md') ? newName : `${newName}.md`;
-      const oldDocPath = `file://${oldName}`;
+      const oldDocPath = `file://${path}`;
       const isNewFile = documents[oldDocPath]?.isNewFile;
 
       if (isNewFile) {
@@ -275,42 +313,57 @@ export const Sidebar: React.FC = () => {
         console.log(`[Rename] 重命名新建文档: ${oldName} -> ${finalName}`);
       } else {
         const parentPath = path.substring(0, path.lastIndexOf('/'));
-        const dirHandle = dirHandles.get(parentPath) || rootHandle;
-
-        if (!dirHandle) {
-          alert('无法获取目录句柄，请重新打开文件夹');
-          setRenameState(null);
-          return;
-        }
+        const oldFilePath = `${parentPath}/${oldName}`;
+        const newFilePath = `${parentPath}/${finalName}`;
 
         try {
-          const oldFileHandle = await dirHandle.getFileHandle(oldName);
-          const file = await oldFileHandle.getFile();
-          const content = await file.text();
+          if (isTauri()) {
+            // Tauri 环境
+            const { rename, readTextFile, writeFile } = await import('@tauri-apps/plugin-fs');
+            const content = await readTextFile(oldFilePath);
+            const encoder = new TextEncoder();
+            await writeFile(newFilePath, encoder.encode(content));
+            await rename(oldFilePath, newFilePath);
 
-          const newFileHandle = await dirHandle.getFileHandle(finalName, { create: true });
-          const writable = await newFileHandle.createWritable();
-          await writable.write(content);
-          await writable.close();
+        // 刷新文件树
+        const tree = await readDirectoryTauri(rootPath!);
+        setFileTree(tree);
+            
+            console.log(`[Rename] 重命名成功: ${oldName} -> ${finalName}`);
+          } else {
+            // 浏览器环境
+            const dirHandle = dirHandles.get(parentPath) || rootHandle;
+            if (!dirHandle) {
+              alert('无法获取目录句柄，请重新打开文件夹');
+              setRenameState(null);
+              return;
+            }
 
-          if ('removeEntry' in dirHandle) {
-            await dirHandle.removeEntry(oldName);
+            const oldFileHandle = await dirHandle.getFileHandle(oldName);
+            const file = await oldFileHandle.getFile();
+            const content = await file.text();
+
+            const newFileHandle = await dirHandle.getFileHandle(finalName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+
+            if ('removeEntry' in dirHandle) {
+              await dirHandle.removeEntry(oldName);
+            }
+
+            setFileHandle(newFilePath, newFileHandle);
+
+            if (rootHandle && rootPath) {
+              const tree = await readDirectoryRecursive(rootHandle, rootPath);
+              setFileTree(tree);
+            }
+            
+            console.log(`[Rename] 重命名成功: ${oldName} -> ${finalName}`);
           }
-
-          setFileHandle(finalName, newFileHandle);
-
-          if (rootHandle && rootPath) {
-            const tree = await readDirectoryRecursive(rootHandle, rootPath);
-            setFileTree(tree);
-          }
-
-          const newDocPath = `file://${finalName}`;
-          renameDocument(oldDocPath, newDocPath);
-
-          console.log(`[Rename] 重命名成功: ${oldName} -> ${finalName}`);
         } catch (err) {
           console.error('[Rename] 重命名失败:', err);
-          alert('重命名失败：' + (err as Error).message);
+          alert('重命名失败');
         }
       }
     }

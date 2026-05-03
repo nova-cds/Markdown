@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useEditorStore, useSettingsStore, useFileStore } from '../stores';
+import { isTauri } from '../utils/platform';
 
 const STORAGE_KEY_DOCS = 'md-editor-docs';
 const STORAGE_KEY_TABS = 'md-editor-tabs';
@@ -33,27 +34,36 @@ export function getFileName(path: string): string {
 }
 
 /**
- * 写入文件到文件系统（使用 FileSystemFileHandle）
+ * 写入文件到文件系统
  */
 async function writeToFileSystem(docPath: string, content: string): Promise<boolean> {
-  const fileHandles = useFileStore.getState().fileHandles;
-  
   // 从docPath中提取完整路径（去掉file://前缀）
   const fullPath = docPath.startsWith('file://') ? docPath.replace('file://', '') : docPath;
   
-  const handle = fileHandles.get(fullPath);
-  
-  if (!handle) {
-    console.log('[FileSystem] 没有找到文件handle，无法写入:', fullPath);
-    return false;
-  }
-  
   try {
-    const writable = await handle.createWritable();
-    await writable.write(content);
-    await writable.close();
-    console.log('[FileSystem] 文件已写入:', fullPath);
-    return true;
+    if (isTauri()) {
+      // Tauri 环境
+      const { writeFile } = await import('@tauri-apps/plugin-fs');
+      const encoder = new TextEncoder();
+      await writeFile(fullPath, encoder.encode(content));
+      console.log('[FileSystem] 文件已写入:', fullPath);
+      return true;
+    } else {
+      // 浏览器环境
+      const fileHandles = useFileStore.getState().fileHandles;
+      const handle = fileHandles.get(fullPath);
+      
+      if (!handle) {
+        console.log('[FileSystem] 没有找到文件handle，无法写入:', fullPath);
+        return false;
+      }
+      
+      const writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      console.log('[FileSystem] 文件已写入:', fullPath);
+      return true;
+    }
   } catch (err) {
     console.error('[FileSystem] 写入文件失败:', err);
     return false;

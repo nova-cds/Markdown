@@ -4,6 +4,7 @@ import 'vditor/dist/index.css';
 import './vditor-styles.css';
 import { useEditorStore, useFileStore, useSettingsStore } from '../../stores';
 import { useSaveToFile } from '../../hooks/useAutoSave';
+import { isTauri } from '../../utils/platform';
 
 interface VditorEditorProps {
   path: string;
@@ -25,44 +26,67 @@ function fileToBase64(file: File): Promise<string> {
 
 // 加载本地图片，返回blob URL
 async function loadLocalImage(imageSrc: string, docPath: string): Promise<string | null> {
-  const { rootHandle, dirHandles } = useFileStore.getState();
-  
-  if (!rootHandle) return null;
+  // 解析图片路径
+  const cleanSrc = imageSrc.replace(/^\.\//, '');
   
   try {
-    // 从文档路径提取目录路径
-    let docDirHandle: FileSystemDirectoryHandle = rootHandle;
-    
-    if (docPath.startsWith('file://')) {
-      const fullPath = docPath.replace('file://', '');
-      const lastSlash = fullPath.lastIndexOf('/');
-      if (lastSlash > 0) {
-        const dirPath = fullPath.substring(0, lastSlash);
-        const foundHandle = dirHandles.get(dirPath);
-        if (foundHandle) {
-          docDirHandle = foundHandle;
+    if (isTauri()) {
+      // Tauri 环境：直接返回相对路径，Tauri 可以直接加载
+      // 或者读取文件转为 blob URL
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      
+      // 从文档路径提取目录路径
+      let docDir = '';
+      if (docPath.startsWith('file://')) {
+        const fullPath = docPath.replace('file://', '');
+        const lastSlash = fullPath.lastIndexOf('/');
+        if (lastSlash > 0) {
+          docDir = fullPath.substring(0, lastSlash);
         }
       }
+      
+      const imagePath = `${docDir}/${cleanSrc}`;
+      const imageData = await readFile(imagePath);
+      const blob = new Blob([imageData]);
+      const blobUrl = URL.createObjectURL(blob);
+      return blobUrl;
+    } else {
+      // 浏览器环境
+      const { rootHandle, dirHandles } = useFileStore.getState();
+      
+      if (!rootHandle) return null;
+      
+      // 从文档路径提取目录路径
+      let docDirHandle: FileSystemDirectoryHandle = rootHandle;
+      
+      if (docPath.startsWith('file://')) {
+        const fullPath = docPath.replace('file://', '');
+        const lastSlash = fullPath.lastIndexOf('/');
+        if (lastSlash > 0) {
+          const dirPath = fullPath.substring(0, lastSlash);
+          const foundHandle = dirHandles.get(dirPath);
+          if (foundHandle) {
+            docDirHandle = foundHandle;
+          }
+        }
+      }
+      
+      const parts = cleanSrc.split('/');
+      
+      // 遍历路径找到图片文件
+      let currentDir = docDirHandle;
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentDir = await currentDir.getDirectoryHandle(parts[i]);
+      }
+      
+      const fileName = parts[parts.length - 1];
+      const fileHandle = await currentDir.getFileHandle(fileName);
+      const file = await fileHandle.getFile();
+      
+      // 创建blob URL
+      const blobUrl = URL.createObjectURL(file);
+      return blobUrl;
     }
-    
-    // 解析图片路径
-    // 格式: img/filename.png 或 ./img/filename.png
-    const cleanSrc = imageSrc.replace(/^\.\//, '');
-    const parts = cleanSrc.split('/');
-    
-    // 遍历路径找到图片文件
-    let currentDir = docDirHandle;
-    for (let i = 0; i < parts.length - 1; i++) {
-      currentDir = await currentDir.getDirectoryHandle(parts[i]);
-    }
-    
-    const fileName = parts[parts.length - 1];
-    const fileHandle = await currentDir.getFileHandle(fileName);
-    const file = await fileHandle.getFile();
-    
-    // 创建blob URL
-    const blobUrl = URL.createObjectURL(file);
-    return blobUrl;
   } catch (err) {
     console.warn('[ImageLoader] 无法加载本地图片:', imageSrc, err);
     return null;
@@ -301,11 +325,11 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       // 图片上传配置
       upload: {
         handler: async (files: File[]): Promise<null> => {
-          const { rootHandle, dirHandles, refreshFileTree } = useFileStore.getState();
           const imageDirectory = useSettingsStore.getState().imageDirectory || 'img';
           
-          if (!rootHandle) {
-            // 没有打开文件夹，使用 base64
+          // 没有打开文件夹，使用 base64
+          const { rootHandle } = useFileStore.getState();
+          if (!rootHandle && !isTauri()) {
             for (const file of files) {
               const base64 = await fileToBase64(file);
               const markdown = `![${file.name}](${base64})`;
@@ -315,48 +339,91 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }
           
           try {
-            // 获取当前文档所在目录
-            let docDirHandle: FileSystemDirectoryHandle = rootHandle;
-            
-            // 从 path 中提取目录路径（path格式: file://目录/子目录/文件名.md）
+            // 获取当前文档所在目录路径
+            let docDir = '';
             if (path.startsWith('file://')) {
               const fullPath = path.replace('file://', '');
               const lastSlash = fullPath.lastIndexOf('/');
               if (lastSlash > 0) {
-                const dirPath = fullPath.substring(0, lastSlash);
-                const foundHandle = dirHandles.get(dirPath);
-                if (foundHandle) {
-                  docDirHandle = foundHandle;
-                }
+                docDir = fullPath.substring(0, lastSlash);
               }
             }
             
-            // 在当前文档所在目录下创建图片目录
-            const imgDir = await docDirHandle.getDirectoryHandle(imageDirectory, { create: true });
+            const imgDirPath = `${docDir}/${imageDirectory}`;
             
-            // 保存每个图片
-            for (const file of files) {
-              const timestamp = Date.now();
-              const ext = file.name.split('.').pop() || 'png';
-              const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
-              const fileName = `${timestamp}_${safeName}`;
+            if (isTauri()) {
+              // Tauri 环境
+              const { mkdir, writeFile } = await import('@tauri-apps/plugin-fs');
               
-              // 创建文件
-              const fileHandle = await imgDir.getFileHandle(fileName, { create: true });
-              const writable = await fileHandle.createWritable();
-              await writable.write(file);
-              await writable.close();
+              // 创建图片目录
+              try {
+                await mkdir(imgDirPath, { recursive: true });
+              } catch (e) {
+                // 目录可能已存在
+              }
               
-              // 插入相对路径的 markdown 图片
-              const relativePath = `${imageDirectory}/${fileName}`;
-              const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
-              vditorRef.current?.insertValue(markdown);
+              // 保存每个图片
+              for (const file of files) {
+                const timestamp = Date.now();
+                const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
+                const fileName = `${timestamp}_${safeName}`;
+                const filePath = `${imgDirPath}/${fileName}`;
+                
+                // 读取文件内容
+                const arrayBuffer = await file.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                await writeFile(filePath, uint8Array);
+                
+                // 插入相对路径的 markdown 图片
+                const relativePath = `${imageDirectory}/${fileName}`;
+                const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
+                vditorRef.current?.insertValue(markdown);
+                
+                console.log('[ImageUpload] 图片已保存:', relativePath);
+              }
+            } else {
+              // 浏览器环境
+              const { dirHandles, refreshFileTree } = useFileStore.getState();
+              let docDirHandle: FileSystemDirectoryHandle = rootHandle!;
               
-              console.log('[ImageUpload] 图片已保存:', relativePath);
+              // 从 path 中提取目录路径
+              if (path.startsWith('file://')) {
+                const fullPath = path.replace('file://', '');
+                const lastSlash = fullPath.lastIndexOf('/');
+                if (lastSlash > 0) {
+                  const dirPath = fullPath.substring(0, lastSlash);
+                  const foundHandle = dirHandles.get(dirPath);
+                  if (foundHandle) {
+                    docDirHandle = foundHandle;
+                  }
+                }
+              }
+              
+              // 在当前文档所在目录下创建图片目录
+              const imgDir = await docDirHandle.getDirectoryHandle(imageDirectory, { create: true });
+              
+              // 保存每个图片
+              for (const file of files) {
+                const timestamp = Date.now();
+                const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
+                const fileName = `${timestamp}_${safeName}`;
+                
+                const fileHandle = await imgDir.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                
+                const relativePath = `${imageDirectory}/${fileName}`;
+                const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
+                vditorRef.current?.insertValue(markdown);
+                
+                console.log('[ImageUpload] 图片已保存:', relativePath);
+              }
+              
+              // 图片上传后刷新文件树
+              refreshFileTree();
             }
-            
-            // 图片上传后刷新文件树
-            refreshFileTree();
           } catch (e) {
             console.error('[ImageUpload] 保存图片失败:', e);
             // 回退到 base64

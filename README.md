@@ -96,12 +96,44 @@ npm run build
 
 ## 桌面应用
 
+### 系统要求
+
+| 操作系统 | 最低版本 | 说明 |
+|----------|----------|------|
+| Windows | 10 (1803+) | Windows 7 不支持 |
+| macOS | 10.15 (Catalina) | - |
+| Linux | - | 支持 x86_64 架构 |
+
+### WebView2 运行时（仅 Windows）
+
+Tauri 应用在 Windows 上依赖 Microsoft Edge WebView2 运行时：
+
+| 系统 | 自带 WebView2 | 绿色版 | 安装包 |
+|------|--------------|--------|--------|
+| Windows 11 | ✅ 是 | ✅ 直接用 | ✅ 直接用 |
+| Windows 10 (21H2+) | ✅ 大部分有 | ✅ 可用 | ✅ 直接用 |
+| Windows 10 (旧版) | ❌ 可能没有 | ⚠️ 需安装 | ✅ 自动安装 |
+
+如果使用绿色版遇到缺少运行时的问题，请下载安装：
+https://developer.microsoft.com/en-us/microsoft-edge/webview2/#download-section
+
+选择 **"Evergreen Bootstrapper"** 下载安装。
+
+### 自动构建
+
 桌面应用通过 GitHub Actions 自动构建，无需本地安装 Rust 或其他编译工具。
 
 推送代码到 GitHub 后，Actions 会自动打包：
-- Windows: `.exe` 安装包
-- macOS: `.dmg` 安装包
-- Linux: `.AppImage` / `.deb` 安装包
+
+| 平台 | 产物 |
+|------|------|
+| Windows | `.msi` 安装包、`.exe` 安装包、绿色版 |
+| macOS | `.dmg` 安装包、`.app` |
+| Linux | `.deb` 安装包、`.AppImage` |
+
+### 下载
+
+前往 [Releases](https://github.com/KoniKee/TMD_Type-Markdown/releases) 页面下载最新版本。
 
 ## License
 
