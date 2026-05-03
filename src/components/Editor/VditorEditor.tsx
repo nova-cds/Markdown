@@ -453,6 +453,13 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           return true;
         }
         
+        // Tab 键：只插入缩进，不触发行间代码
+        if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey) {
+          event.preventDefault();
+          vditorRef.current?.insertValue('\t');
+          return true;
+        }
+        
         // 表格内按Enter时显示快捷键提示
         if (event.key === 'Enter' && !event.ctrlKey && !event.shiftKey) {
           const selection = window.getSelection();
