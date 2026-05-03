@@ -30,6 +30,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Design docs (internal)
+design/
+
 # Tauri (for future desktop app)
 src-tauri/target/
 

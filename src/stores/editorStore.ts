@@ -1,12 +1,10 @@
 import { create } from 'zustand';
-import type { EditorState } from 'prosemirror-state';
 
 export interface DocumentState {
   content: string;
   isModified: boolean;
   isNewFile: boolean;
   lastSaved: number | null;
-  editorState?: EditorState;
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
@@ -65,8 +63,6 @@ interface EditorStateStore {
   updateDocument: (path: string, content: string) => void;
   saveDocument: (path: string, content?: string) => void;
   setActiveDocument: (path: string | null) => void;
-  setEditorState: (path: string, state: EditorState) => void;
-  getEditorState: (path: string) => EditorState | undefined;
   renameDocument: (oldPath: string, newPath: string) => void;
 }
 
@@ -180,23 +176,6 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
   },
 
   setActiveDocument: (path: string | null) => set({ activeDocPath: path }),
-
-  setEditorState: (path: string, state: EditorState) => {
-    const { documents } = get();
-    const doc = documents[path];
-    if (doc) {
-      set({
-        documents: {
-          ...documents,
-          [path]: { ...doc, editorState: state },
-        },
-      });
-    }
-  },
-
-  getEditorState: (path: string) => {
-    return get().documents[path]?.editorState;
-  },
 
   renameDocument: (oldPath: string, newPath: string) => {
     const { documents, tabs, activeDocPath } = get();
