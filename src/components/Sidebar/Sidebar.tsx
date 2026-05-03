@@ -207,8 +207,10 @@ export const Sidebar: React.FC = () => {
         
         // 刷新文件树
         const fullRoot = getFullRootPath();
-        const tree = await readDirectoryTauri(fullRoot);
-        setFileTree(tree);
+        if (fullRoot) {
+          const tree = await readDirectoryTauri(fullRoot);
+          setFileTree(tree);
+        }
         
         // 打开新文件
         openDocument(`file://${filePath}`, defaultContent, false);
@@ -285,8 +287,10 @@ export const Sidebar: React.FC = () => {
         
         // 刷新文件树
         const fullRoot = getFullRootPath();
-        const tree = await readDirectoryTauri(fullRoot);
-        setFileTree(tree);
+        if (fullRoot) {
+          const tree = await readDirectoryTauri(fullRoot);
+          setFileTree(tree);
+        }
         
         console.log(`[NewDir] 创建目录成功: ${dirName}`);
       } else {
@@ -299,7 +303,7 @@ export const Sidebar: React.FC = () => {
         }
 
         const newDirHandle = await dirHandle.getDirectoryHandle(dirName, { create: true });
-        setDirHandle(dirPath, newDirHandle);
+        setDirHandle(`${parentPath}/${dirName}`, newDirHandle);
 
         const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
         setFileTree(tree);
