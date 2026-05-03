@@ -536,36 +536,33 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         // 在编辑器容器上拦截 Tab 键
         const tabKeydownHandler = (e: KeyboardEvent) => {
           if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
-            // 检查是否在表格内
             const selection = window.getSelection();
             if (selection && selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
-              const cell = range.startContainer.parentElement?.closest('td, th');
               
+              // 检查是否在表格内
+              const cell = range.startContainer.parentElement?.closest('td, th');
               if (cell) {
-                // 在表格内，使用 Vditor 默认行为（跳到下一个单元格）
                 return;
               }
               
-              // 检查是否在列表内（有序或无序）
-              const listItem = range.startContainer.parentElement?.closest('li, [data-type="li"]');
-              if (listItem) {
-                // 在列表内，使用 Vditor 默认行为（缩进到下一层级）
+              // 检查是否在列表内 - 匹配 UL/OL/LI 标签
+              const listContainer = range.startContainer.parentElement?.closest('ul, ol, li');
+              if (listContainer) {
                 return;
               }
             }
             
-            // 不在表格内，插入缩进
+            // 不在表格或列表内，插入缩进
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation(); // 阻止其他 handler
+            e.stopImmediatePropagation();
             isTabPressed = true;
             lastTabTime = Date.now();
             
-            // 直接插入缩进（2个全角空格 = 2个汉字宽度）
             if (selection && selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
-              const textNode = document.createTextNode('　　'); // 2个全角空格
+              const textNode = document.createTextNode('　　');
               range.insertNode(textNode);
               range.setStartAfter(textNode);
               range.collapse(true);

@@ -31,15 +31,29 @@
 }
 
 /* 修复有序列表序号 - 需要覆盖TailwindCSS preflight的重置 */
-/* 使用更高specificity的选择器 */
+/* 第一层：数字 1. 2. 3. */
 .vditor .vditor-content .vditor-reset ol,
-.vditor .vditor-content .vditor-reset ol ol,
-.vditor .vditor-content .vditor-reset ol ol ol,
-.vditor .vditor-ir pre.vditor-reset ol,
-.vditor .vditor-ir pre.vditor-reset ol ol,
-.vditor .vditor-ir pre.vditor-reset ol ol ol {
+.vditor .vditor-ir pre.vditor-reset ol {
   list-style: decimal !important;
   list-style-type: decimal !important;
+  padding-left: 2em !important;
+  margin: 0 0 16px 0 !important;
+}
+
+/* 第二层：小写字母 a. b. c. */
+.vditor .vditor-content .vditor-reset ol ol,
+.vditor .vditor-ir pre.vditor-reset ol ol {
+  list-style: lower-alpha !important;
+  list-style-type: lower-alpha !important;
+  padding-left: 2em !important;
+  margin: 0 0 16px 0 !important;
+}
+
+/* 第三层：小写罗马数字 i. ii. iii. */
+.vditor .vditor-content .vditor-reset ol ol ol,
+.vditor .vditor-ir pre.vditor-reset ol ol ol {
+  list-style: lower-roman !important;
+  list-style-type: lower-roman !important;
   padding-left: 2em !important;
   margin: 0 0 16px 0 !important;
 }
