@@ -55,11 +55,13 @@ export const Sidebar: React.FC = () => {
   // 将相对路径转换为绝对路径（Tauri 环境）
   const toAbsolutePath = useCallback((relativePath: string) => {
     if (isTauriCached()) {
-      const fullRoot = getFullRootPath();
-      // 如果已经是绝对路径，直接返回
+      // 如果已经是绝对路径（Windows 包含盘符，Unix 以 / 开头），直接返回
       if (relativePath.includes(':') || relativePath.startsWith('/')) {
         return relativePath;
       }
+      const fullRoot = getFullRootPath();
+      if (!fullRoot) return relativePath;
+      // 统一使用 / 作为分隔符（Tauri 会自动处理）
       return `${fullRoot}/${relativePath}`;
     }
     return relativePath;
@@ -656,7 +658,7 @@ export const Sidebar: React.FC = () => {
                 onClick={() => toggleDir(rootPath)}
                 onContextMenu={(e) => handleContextMenu(e, {
                   name: rootPath,
-                  path: rootPath,
+                  path: getFullRootPath() || rootPath,  // 使用完整路径
                   isDir: true,
                   handle: rootHandle || undefined
                 })}
