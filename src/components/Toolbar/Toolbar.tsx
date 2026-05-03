@@ -7,7 +7,6 @@ import {
   Settings,
   Moon,
   Sun,
-  Search,
   Command,
   LucideIcon,
   X,
@@ -62,13 +61,7 @@ export const Toolbar: React.FC = () => {
         {/* 分隔线 */}
         <div className="w-px h-5 bg-[var(--editor-border)] mx-2" />
 
-        {/* 搜索按钮 */}
-        <ToolbarButton
-          icon={Search}
-          title="搜索 (Ctrl+F)"
-          onClick={() => {}}
-          shortcut="Ctrl+F"
-        />
+
 
         {/* 右侧工具 */}
         <div className="ml-auto flex items-center gap-0.5">

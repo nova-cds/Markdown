@@ -277,6 +277,17 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         enable: true,
         position: 'right',
       },
+      // 禁用代码块预览
+      preview: {
+        markdown: {
+          codeBlockPreview: false,
+        },
+      },
+      // 禁用 hint 自动补全
+      hint: {
+        parse: false,
+        emoji: {},
+      },
       // 工具栏配置
       toolbar: [
         'emoji',
@@ -436,8 +447,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           return null;
         },
       },
-      // Tab行为配置
-      tab: '\t',
+      // Tab行为配置：使用空格而非制表符，避免触发代码块
+      tab: '    ', // 4个空格
       // 初始值
       value: contentRef.current,
       // 内容变化回调
@@ -453,12 +464,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           return true;
         }
         
-        // Tab 键：只插入缩进，不触发行间代码
-        if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey) {
-          event.preventDefault();
-          vditorRef.current?.insertValue('\t');
-          return true;
-        }
+        // Tab 键处理已移到 after 回调中，使用 document 级别监听
         
         // 表格内按Enter时显示快捷键提示
         if (event.key === 'Enter' && !event.ctrlKey && !event.shiftKey) {
@@ -485,15 +491,107 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
         
-        // 监听DOM变化，处理新插入的图片
+        // 检测光标是否在行首
+        const isAtLineStart = (): boolean => {
+          const selection = window.getSelection();
+          if (!selection || selection.rangeCount === 0) return false;
+          
+          const range = selection.getRangeAt(0);
+          const container = range.startContainer;
+          
+          // 如果是文本节点，检查偏移量
+          if (container.nodeType === Node.TEXT_NODE) {
+            const text = container.textContent || '';
+            const offset = range.startOffset;
+            
+            // 检查光标前的文本是否全是空白或为空
+            const textBeforeCursor = text.substring(0, offset);
+            if (offset === 0 || /^\s*$/.test(textBeforeCursor)) {
+              // 还需要检查是否在行首（父元素是段落开头）
+              const parent = container.parentElement;
+              if (parent) {
+                // 获取光标所在行的文本
+                const lineText = parent.textContent || '';
+                const cursorPosInLine = offset + (parent.firstChild === container ? 0 : 0);
+                
+                // 如果光标前的内容都是空白，则认为在行首
+                const beforeCursor = lineText.substring(0, cursorPosInLine);
+                if (/^\s*$/.test(beforeCursor) || cursorPosInLine === 0) {
+                  return true;
+                }
+              }
+            }
+          }
+          
+          return false;
+        };
+        
+        // 记录 Tab 按下时间，用于检测 Tab 触发的代码块
+        let lastTabTime = 0;
+        let isTabPressed = false;
+        
+        // 在编辑器容器上拦截 Tab 键
+        const tabKeydownHandler = (e: KeyboardEvent) => {
+          if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+            // 检查是否在表格内
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              const cell = range.startContainer.parentElement?.closest('td, th');
+              
+              if (cell) {
+                // 在表格内，使用 Vditor 默认行为（跳到下一个单元格）
+                return;
+              }
+            }
+            
+            // 不在表格内，插入缩进
+            e.preventDefault();
+            e.stopPropagation();
+            isTabPressed = true;
+            lastTabTime = Date.now();
+            
+            // 直接插入缩进（1个全角空格 = 1个汉字宽度）
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              const textNode = document.createTextNode('　'); // 1个全角空格
+              range.insertNode(textNode);
+              range.setStartAfter(textNode);
+              range.collapse(true);
+              selection.removeAllRanges();
+              selection.addRange(range);
+              
+              // 触发 input 事件让 Vditor 知道内容变化了
+              containerRef.current?.querySelector('.vditor-reset')?.dispatchEvent(new InputEvent('input', { bubbles: true }));
+            }
+          }
+        };
+        
+        containerRef.current?.addEventListener('keydown', tabKeydownHandler, true);
+        (vditorRef.current as any)._tabKeydownHandler = tabKeydownHandler;
+        
+        // 监听DOM变化，处理新插入的图片和代码块
         const imageObserver = new MutationObserver((mutations) => {
           for (const mutation of mutations) {
             for (const node of Array.from(mutation.addedNodes)) {
+              // 处理图片
               if (node instanceof HTMLImageElement) {
                 handleLocalImage(node, path);
               } else if (node instanceof HTMLElement) {
                 const imgs = node.querySelectorAll('img');
                 imgs.forEach(img => handleLocalImage(img, path));
+                
+                // 检测是否是 Tab 触发的代码块
+                if (node.getAttribute?.('data-type') === 'code-block' || 
+                    node.querySelector?.('[data-type="code-block"]')) {
+                  const now = Date.now();
+                  // 如果在 Tab 按下后 100ms 内插入的代码块，认为是 Tab 触发的
+                  if (now - lastTabTime < 100) {
+                    console.log('[MutationObserver] 检测到 Tab 触发的代码块，移除并插入缩进');
+                    node.remove();
+                    vditorRef.current?.insertValue('　'); // 1个全角空格
+                  }
+                }
               }
             }
           }
@@ -570,10 +668,14 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         const imageObserver = (vditorRef.current as any)._imageObserver;
         const handleKeyDown = (vditorRef.current as any)._handleKeyDown;
         const vditorReset = (vditorRef.current as any)._vditorReset;
+        const tabKeydownHandler = (vditorRef.current as any)._tabKeydownHandler;
         
         if (imageObserver) imageObserver.disconnect();
         if (handleKeyDown && vditorReset) {
           vditorReset.removeEventListener('keydown', handleKeyDown);
+        }
+        if (tabKeydownHandler && containerRef.current) {
+          containerRef.current.removeEventListener('keydown', tabKeydownHandler, true);
         }
         vditorRef.current.destroy();
         vditorRef.current = null;
