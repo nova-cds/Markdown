@@ -642,7 +642,7 @@ export const Sidebar: React.FC = () => {
 
       {/* 文件树 */}
       <div className="flex-1 overflow-auto py-2">
-        {fileTree.length > 0 && rootPath ? (
+        {rootPath ? (
           <div className="px-1">
             {/* 根文件夹 */}
             <div key={rootPath}>
