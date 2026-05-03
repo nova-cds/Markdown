@@ -79,6 +79,26 @@ jobs:
           releaseDraft: true
           prerelease: false
 
+      - name: Upload portable exe to Release (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $VERSION = node -p "require('./package.json').version"
+          $TAG = "v$VERSION"
+          
+          # 重命名为更友好的文件名
+          Copy-Item "src-tauri/target/release/MD Editor.exe" "MD-Editor-Portable-$TAG.exe"
+          
+          # 尝试上传绿色版 exe 到 release
+          gh release upload $TAG "MD-Editor-Portable-$TAG.exe" --clobber 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Uploaded portable exe to release $TAG"
+          } else {
+            Write-Host "Release $TAG not ready yet, portable exe available in artifacts"
+          }
+
       - name: Upload artifacts (Windows)
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
@@ -87,7 +107,7 @@ jobs:
           path: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/md-editor.exe
+            src-tauri/target/release/MD Editor.exe
 
       - name: Upload artifacts (macOS)
         if: matrix.platform == 'macos-latest'
