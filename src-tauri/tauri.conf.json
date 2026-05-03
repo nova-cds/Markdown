@@ -32,16 +32,5 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ]
-  },
-  "plugins": {
-    "fs": {
-      "scope": ["**"]
-    },
-    "dialog": {
-      "scope": true
-    },
-    "clipboard-manager": {
-      "scope": ["read", "write"]
-    }
   }
 }
