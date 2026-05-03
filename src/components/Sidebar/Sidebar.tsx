@@ -46,24 +46,38 @@ export const Sidebar: React.FC = () => {
 
   // 获取 Tauri 环境下的完整根路径
   const getFullRootPath = useCallback(() => {
+    console.log('[getFullRootPath] isTauriCached:', isTauriCached());
+    console.log('[getFullRootPath] rootHandle:', rootHandle);
+    console.log('[getFullRootPath] rootPath:', rootPath);
+    
     if (isTauriCached() && rootHandle) {
+      console.log('[getFullRootPath] 返回 rootHandle:', rootHandle);
       return rootHandle as unknown as string;
     }
+    console.log('[getFullRootPath] 返回 rootPath:', rootPath);
     return rootPath;
   }, [rootHandle, rootPath]);
 
   // 将相对路径转换为绝对路径（Tauri 环境）
   const toAbsolutePath = useCallback((relativePath: string) => {
+    console.log('[toAbsolutePath] 输入:', relativePath);
+    
     if (isTauriCached()) {
       // 如果已经是绝对路径（Windows 包含盘符，Unix 以 / 开头），直接返回
       if (relativePath.includes(':') || relativePath.startsWith('/')) {
+        console.log('[toAbsolutePath] 已是绝对路径，直接返回:', relativePath);
         return relativePath;
       }
       const fullRoot = getFullRootPath();
-      if (!fullRoot) return relativePath;
-      // 统一使用 / 作为分隔符（Tauri 会自动处理）
-      return `${fullRoot}/${relativePath}`;
+      if (!fullRoot) {
+        console.log('[toAbsolutePath] fullRoot 为空，返回原路径');
+        return relativePath;
+      }
+      const result = `${fullRoot}/${relativePath}`;
+      console.log('[toAbsolutePath] 拼接结果:', result);
+      return result;
     }
+    console.log('[toAbsolutePath] 非 Tauri 环境，返回原路径');
     return relativePath;
   }, [getFullRootPath]);
 

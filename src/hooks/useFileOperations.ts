@@ -7,7 +7,7 @@ import { isTauriCached } from '../utils/platform';
  * 提供新建文档、打开文件、打开文件夹等操作
  */
 export const useFileOperations = () => {
-  const { fileTree, rootPath, setRootPath, setFileTree, setFileHandle, setDirHandle, setRootHandle, dirHandles, rootHandle } = useFileStore();
+  const { fileTree, rootPath, setRootPath, setFileTree, setFileHandle, setDirHandle, setRootHandle, dirHandles, rootHandle, clearAll } = useFileStore();
   const { openDocument } = useEditorStore();
 
   // 新建文档
@@ -169,8 +169,15 @@ export const useFileOperations = () => {
         const folderPath = selected as string;
         const folderName = folderPath.split(/[/\\]/).pop() || folderPath;
         
+        // 清理旧状态
+        clearAll();
+        
+        // 设置新状态
         setRootPath(folderName);
         setRootHandle(folderPath as any);
+        
+        console.log('[OpenFolder] 设置 rootPath:', folderName);
+        console.log('[OpenFolder] 设置 rootHandle:', folderPath);
         
         const tree = await readDirectoryTauri(folderPath);
         setFileTree(tree);
@@ -197,7 +204,7 @@ export const useFileOperations = () => {
         alert('您的浏览器不支持文件夹浏览，请使用"打开文件"功能');
       }
     }
-  }, [setRootPath, setFileTree, setRootHandle, readDirectoryRecursive, readDirectoryTauri]);
+  }, [setRootPath, setFileTree, setRootHandle, readDirectoryRecursive, readDirectoryTauri, clearAll]);
 
   return {
     handleNewFile,
@@ -214,5 +221,6 @@ export const useFileOperations = () => {
     setDirHandle,
     setRootHandle,
     setRootPath,
+    clearAll,
   };
 };

@@ -21,12 +21,13 @@ interface FileState {
   setFileTree: (tree: TreeNode[]) => void;
   selectFile: (path: string) => void;
   refreshTree: () => void;
-  refreshFileTree: () => Promise<void>; // 新增：异步刷新文件树
+  refreshFileTree: () => Promise<void>;
   setFileHandle: (fileName: string, handle: FileSystemFileHandle) => void;
   getFileHandle: (fileName: string) => FileSystemFileHandle | undefined;
   setDirHandle: (path: string, handle: FileSystemDirectoryHandle) => void;
   getDirHandle: (path: string) => FileSystemDirectoryHandle | undefined;
   setRootHandle: (handle: FileSystemDirectoryHandle | null) => void;
+  clearAll: () => void; // 新增：清理所有状态
 }
 
 export const useFileStore = create<FileState>((set, get) => ({
@@ -143,5 +144,16 @@ export const useFileStore = create<FileState>((set, get) => ({
 
   setRootHandle: (handle: FileSystemDirectoryHandle | null) => {
     set({ rootHandle: handle });
+  },
+  
+  clearAll: () => {
+    set({
+      rootPath: null,
+      fileTree: [],
+      selectedPath: null,
+      fileHandles: new Map(),
+      dirHandles: new Map(),
+      rootHandle: null,
+    });
   },
 }));
