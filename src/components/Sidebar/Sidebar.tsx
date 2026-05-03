@@ -43,6 +43,27 @@ export const Sidebar: React.FC = () => {
   const { openDocument, renameDocument, documents } = useEditorStore();
   const { readDirectoryRecursive, readDirectoryTauri } = useFileOperations();
 
+  // 获取 Tauri 环境下的完整根路径
+  const getFullRootPath = useCallback(() => {
+    if (isTauriCached() && rootHandle) {
+      return rootHandle as unknown as string;
+    }
+    return rootPath;
+  }, [rootHandle, rootPath]);
+
+  // 将相对路径转换为绝对路径（Tauri 环境）
+  const toAbsolutePath = useCallback((relativePath: string) => {
+    if (isTauriCached()) {
+      const fullRoot = getFullRootPath();
+      // 如果已经是绝对路径，直接返回
+      if (relativePath.includes(':') || relativePath.startsWith('/')) {
+        return relativePath;
+      }
+      return `${fullRoot}/${relativePath}`;
+    }
+    return relativePath;
+  }, [getFullRootPath]);
+
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
@@ -171,18 +192,22 @@ export const Sidebar: React.FC = () => {
 
     const { parentPath } = newFileState;
     const finalName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
-    const filePath = `${parentPath}/${finalName}`;
     const defaultContent = `# ${finalName.replace('.md', '')}\n\n在这里开始写作...\n`;
 
     try {
       if (isTauriCached()) {
-        // Tauri 环境
+        // Tauri 环境 - 使用绝对路径
+        const absoluteParentPath = toAbsolutePath(parentPath);
+        const filePath = `${absoluteParentPath}/${finalName}`;
+        console.log('[NewFile] Tauri 环境创建文件:', filePath);
+        
         const { writeFile } = await import('@tauri-apps/plugin-fs');
         const encoder = new TextEncoder();
         await writeFile(filePath, encoder.encode(defaultContent));
         
         // 刷新文件树
-        const tree = await readDirectoryTauri(rootPath!);
+        const fullRoot = getFullRootPath();
+        const tree = await readDirectoryTauri(fullRoot);
         setFileTree(tree);
         
         // 打开新文件
@@ -247,16 +272,20 @@ export const Sidebar: React.FC = () => {
     }
 
     const { parentPath } = newDirState;
-    const dirPath = `${parentPath}/${dirName}`;
 
     try {
       if (isTauriCached()) {
-        // Tauri 环境
+        // Tauri 环境 - 使用绝对路径
+        const absoluteParentPath = toAbsolutePath(parentPath);
+        const dirPath = `${absoluteParentPath}/${dirName}`;
+        console.log('[NewDir] Tauri 环境创建目录:', dirPath);
+        
         const { mkdir } = await import('@tauri-apps/plugin-fs');
         await mkdir(dirPath);
         
         // 刷新文件树
-        const tree = await readDirectoryTauri(rootPath!);
+        const fullRoot = getFullRootPath();
+        const tree = await readDirectoryTauri(fullRoot);
         setFileTree(tree);
         
         console.log(`[NewDir] 创建目录成功: ${dirName}`);
