@@ -216,7 +216,7 @@ export const Sidebar: React.FC = () => {
       }
     } catch (err) {
       console.error('[NewFile] 创建文件失败:', err);
-      alert('创建文件失败');
+      alert('创建文件失败: ' + (err instanceof Error ? err.message : String(err)));
     }
 
     setNewFileState(null);
@@ -285,7 +285,7 @@ export const Sidebar: React.FC = () => {
       });
     } catch (err) {
       console.error('[NewDir] 创建目录失败:', err);
-      alert('创建目录失败: ' + (err as Error).message);
+      alert('创建目录失败: ' + (err instanceof Error ? err.message : String(err)));
     }
 
     setNewDirState(null);
@@ -363,7 +363,7 @@ export const Sidebar: React.FC = () => {
           }
         } catch (err) {
           console.error('[Rename] 重命名失败:', err);
-          alert('重命名失败');
+          alert('重命名失败: ' + (err instanceof Error ? err.message : String(err)));
         }
       }
     }
