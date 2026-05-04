@@ -20,6 +20,9 @@ function App() {
       console.log('[App] window.__TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
       console.log('[App] window.__TAURI_INTERNALS__:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
       
+      // 显示检测结果（调试用）
+      alert(`[调试信息] Tauri 环境检测: ${detected}\n\n__TAURI__: ${typeof window !== 'undefined' && '__TAURI__' in window}\n__TAURI_INTERNALS__: ${typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window}\n\n如果检测为 false，请将此截图发给我。`);
+      
       (window as any).__TAURI_READY__ = true;
       
       setIsReady(true);
