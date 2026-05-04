@@ -4,6 +4,23 @@ import { useSaveToFile, getFileName } from '../../hooks/useAutoSave';
 import { isTauriCached } from '../../utils/platform';
 import { FileText, X, Save, Moon, Sun, Keyboard, Minus, Square, X as CloseIcon, LucideIcon } from 'lucide-react';
 
+declare global {
+  interface Window {
+    __TAURI__?: {
+      window: {
+        getCurrentWindow: () => any;
+      };
+    };
+  }
+}
+
+const getTauriWindow = () => {
+  if (typeof window !== 'undefined' && window.__TAURI__?.window) {
+    return window.__TAURI__.window.getCurrentWindow();
+  }
+  return null;
+};
+
 export const TitleBar: React.FC = () => {
   const tabs = useEditorStore((state) => state.tabs);
   const activeDocPath = useEditorStore((state) => state.activeDocPath);
@@ -14,59 +31,53 @@ export const TitleBar: React.FC = () => {
   const { theme, toggleTheme } = useSettingsStore();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [appWindow, setAppWindow] = useState<any>(null);
 
   useEffect(() => {
-    if (isTauriCached()) {
-      import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-        const win = getCurrentWindow();
-        setAppWindow(win);
-        win.onResized(async () => {
-          setIsMaximized(await win.isMaximized());
-        });
-        win.isMaximized().then(setIsMaximized);
+    const win = getTauriWindow();
+    if (win) {
+      win.onResized(async () => {
+        setIsMaximized(await win.isMaximized());
       });
+      win.isMaximized().then(setIsMaximized);
     }
   }, []);
 
-  const handleDrag = (e: React.MouseEvent) => {
-    if (appWindow && e.button === 0) {
-      appWindow.startDragging();
+  const handleTitleBarMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    
+    const win = getTauriWindow();
+    if (win) {
+      e.preventDefault();
+      win.startDragging();
     }
   };
 
   const handleDoubleClick = () => {
-    if (appWindow) {
-      appWindow.toggleMaximize();
+    const win = getTauriWindow();
+    if (win) {
+      win.toggleMaximize();
     }
   };
 
   const handleMinimize = () => {
-    if (appWindow) {
-      appWindow.minimize();
-    }
+    getTauriWindow()?.minimize();
   };
 
   const handleToggleMaximize = () => {
-    if (appWindow) {
-      appWindow.toggleMaximize();
-    }
+    getTauriWindow()?.toggleMaximize();
   };
 
   const handleClose = () => {
-    if (appWindow) {
-      appWindow.close();
-    }
+    getTauriWindow()?.close();
   };
 
   return (
     <>
       <div 
         className="h-10 bg-[var(--titlebar-bg)] border-b border-[var(--editor-border)] flex items-center select-none"
-        onMouseDown={handleDrag}
+        onMouseDown={handleTitleBarMouseDown}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Tab 页签区域 */}
         <div className="flex-1 flex items-end h-full min-w-0">
           {tabs.length === 0 ? (
             <div className="flex items-center h-full px-4">
@@ -141,23 +152,19 @@ export const TitleBar: React.FC = () => {
           )}
         </div>
 
-        {/* 右侧拖拽区域 - 始终保留一小块空间 */}
         <div 
           className="w-20 h-full flex-shrink-0"
-          onMouseDown={handleDrag}
+          onMouseDown={handleTitleBarMouseDown}
           onDoubleClick={handleDoubleClick}
         />
 
-        {/* 右侧操作区域 */}
         <div 
           className="flex items-center h-full flex-shrink-0"
           onMouseDown={(e) => e.stopPropagation()}
         >
-          {/* 保存按钮 */}
           {activeDocPath && (
             <button
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[var(--accent-500)] text-white hover:bg-[var(--accent-600)] transition-all mx-1"
-              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); saveToFile(); }}
               title="保存 (Ctrl+S)"
             >
@@ -166,21 +173,18 @@ export const TitleBar: React.FC = () => {
             </button>
           )}
 
-          {/* 快捷键按钮 */}
           <TitleBarButton
             icon={Keyboard}
             title="快捷键"
             onClick={() => setShowShortcuts(true)}
           />
 
-          {/* 主题切换 */}
           <TitleBarButton
             icon={theme === 'dark' ? Sun : Moon}
             title={theme === 'dark' ? '浅色模式' : '暗色模式'}
             onClick={toggleTheme}
           />
 
-          {/* 窗口控制按钮（仅 Tauri） */}
           {isTauriCached() && (
             <>
               <div className="w-px h-4 bg-[var(--editor-border)] mx-1" />
@@ -209,7 +213,6 @@ export const TitleBar: React.FC = () => {
         </div>
       </div>
 
-      {/* 快捷键弹窗 */}
       {showShortcuts && (
         <ShortcutsDialog onClose={() => setShowShortcuts(false)} />
       )}
@@ -250,7 +253,12 @@ const TitleBarButton: React.FC<TitleBarButtonProps> = ({
       `}
       onClick={(e) => {
         e.stopPropagation();
+        e.preventDefault();
         onClick();
+      }}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
       }}
       title={title}
     >
