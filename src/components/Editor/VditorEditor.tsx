@@ -230,38 +230,24 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
   useEffect(() => {
     if (!containerRef.current) return;
     
-    // 调试信息
-    console.log('[VditorEditor] 初始化编辑器');
-    console.log('[VditorEditor] path:', path);
-    console.log('[VditorEditor] isTauriCached():', isTauriCached());
-    console.log('[VditorEditor] __TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
-    console.log('[VditorEditor] __TAURI_INTERNALS__:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
-    
-    // 从 store 获取文档（不订阅）
     const documents = useEditorStore.getState().documents;
     const doc = documents[path];
     if (!doc) {
-      console.log('[VditorEditor] 文档不存在:', path);
       return;
     }
     
-    // 如果内容为空，等待延迟加载
     if (!doc.content) {
-      console.log('[VditorEditor] 文档内容为空，等待加载:', path);
       currentPathRef.current = path;
       contentRef.current = '';
       isInitializedRef.current = false;
       return;
     }
     
-    // 如果已初始化且是同一个文档，不重新初始化
     if (isInitializedRef.current && currentPathRef.current === path) {
       return;
     }
 
-    // 销毁旧实例
     if (vditorRef.current) {
-      console.log('[VditorEditor] 销毁旧实例');
       vditorRef.current.destroy();
       vditorRef.current = null;
     }
@@ -269,8 +255,6 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
     currentPathRef.current = path;
     contentRef.current = doc.content;
     isInitializedRef.current = false;
-
-    console.log('[VditorEditor] 初始化编辑器:', path, '内容长度:', doc.content.length);
 
     const vditor = new Vditor(containerRef.current, {
       mode: 'ir',
@@ -342,99 +326,63 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       // 图片上传配置
       upload: {
         handler: async (files: File[]): Promise<null> => {
-          console.log('[ImageUpload] ===== 开始处理图片 =====');
-          console.log('[ImageUpload] 文件数量:', files.length);
-          
           const tauriDetected = await waitForTauri();
-          console.log('[ImageUpload] Tauri 环境检测结果:', tauriDetected);
-          console.log('[ImageUpload] isTauriCached():', isTauriCached());
-          
           const imageDirectory = useSettingsStore.getState().imageDirectory || 'img';
-          console.log('[ImageUpload] 图片目录配置:', imageDirectory);
-          
-          const { rootHandle, rootPath } = useFileStore.getState();
-          console.log('[ImageUpload] rootHandle:', rootHandle);
-          console.log('[ImageUpload] rootPath:', rootPath);
-          console.log('[ImageUpload] 当前文档路径:', path);
+          const { rootHandle } = useFileStore.getState();
           
           let docDir = '';
           if (path.startsWith('file://')) {
             const fullPath = path.replace('file://', '');
-            console.log('[ImageUpload] 完整路径:', fullPath);
             const lastSlash = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'));
-            console.log('[ImageUpload] lastSlash 位置:', lastSlash);
             if (lastSlash > 0) {
               docDir = fullPath.substring(0, lastSlash);
             }
           }
-          console.log('[ImageUpload] 文档目录:', docDir);
           
           if (!docDir) {
-            const errorMsg = `无法确定文档目录!\n\n路径信息:\n- 当前路径: ${path}\n- 提取的目录: ${docDir}\n\n环境信息:\n- Tauri: ${tauriDetected}\n- rootHandle: ${rootHandle}\n- rootPath: ${rootPath}`;
-            console.error('[ImageUpload]', errorMsg);
-            alert(errorMsg);
+            alert('无法确定文档目录，请确保已保存文档。');
             return null;
           }
           
           if (tauriDetected) {
-            console.log('[ImageUpload] 进入 Tauri 处理分支');
-            
             try {
               const pathSep = '\\';
               const imgDirPath = `${docDir}${pathSep}${imageDirectory}`;
-              console.log('[ImageUpload] 图片目录完整路径:', imgDirPath);
               
               const { mkdir, writeFile } = await import('@tauri-apps/plugin-fs');
               
-              console.log('[ImageUpload] 尝试创建目录...');
               try {
                 await mkdir(imgDirPath, { recursive: true });
-                console.log('[ImageUpload] 目录创建成功');
               } catch (e) {
-                console.log('[ImageUpload] 目录已存在或创建失败:', e);
+                // 目录已存在，忽略错误
               }
               
               for (const file of files) {
-                console.log('[ImageUpload] 处理文件:', file.name, '大小:', file.size);
-                
                 const timestamp = Date.now();
                 const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
                 const fileName = `${timestamp}_${safeName}`;
                 const filePath = `${imgDirPath}${pathSep}${fileName}`;
                 
-                console.log('[ImageUpload] 目标文件路径:', filePath);
-                
                 const arrayBuffer = await file.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
                 
-                console.log('[ImageUpload] 开始写入文件...');
                 await writeFile(filePath, uint8Array);
-                console.log('[ImageUpload] 文件写入成功');
                 
                 const relativePath = `${imageDirectory}/${fileName}`;
                 const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
                 vditorRef.current?.insertValue(markdown);
-                
-                console.log('[ImageUpload] 图片保存成功，相对路径:', relativePath);
               }
               
-              console.log('[ImageUpload] ===== 图片处理完成 =====');
               return null;
               
             } catch (e) {
-              const errorMsg = `保存图片失败!\n\n错误信息:\n${e}\n\n环境信息:\n- Tauri: ${tauriDetected}\n- 文档目录: ${docDir}\n- 图片目录: ${imageDirectory}\n- 当前路径: ${path}`;
-              console.error('[ImageUpload]', errorMsg);
-              alert(errorMsg);
+              alert(`保存图片失败: ${e}`);
               return null;
             }
           }
           
-          console.log('[ImageUpload] 进入浏览器处理分支');
-          
           if (!rootHandle) {
-            const errorMsg = `未打开文件夹!\n\n请先打开文件夹后再粘贴图片。\n\n环境信息:\n- Tauri: ${tauriDetected}\n- rootHandle: ${rootHandle}\n- rootPath: ${rootPath}`;
-            console.error('[ImageUpload]', errorMsg);
-            alert(errorMsg);
+            alert('请先打开文件夹后再粘贴图片。');
             return null;
           }
           
@@ -469,18 +417,13 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
               const relativePath = `${imageDirectory}/${fileName}`;
               const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
               vditorRef.current?.insertValue(markdown);
-              
-              console.log('[ImageUpload] 图片已保存:', relativePath);
             }
             
             refreshFileTree();
-            console.log('[ImageUpload] ===== 图片处理完成 =====');
             return null;
             
           } catch (e) {
-            const errorMsg = `保存图片失败!\n\n错误信息:\n${e}\n\n环境信息:\n- Tauri: ${tauriDetected}\n- rootHandle: ${rootHandle}\n- 文档目录: ${docDir}`;
-            console.error('[ImageUpload]', errorMsg);
-            alert(errorMsg);
+            alert(`保存图片失败: ${e}`);
             return null;
           }
         },
@@ -527,7 +470,6 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       after: () => {
         vditorRef.current = vditor;
         isInitializedRef.current = true;
-        console.log('[VditorEditor] 编辑器初始化完成');
         
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
@@ -632,11 +574,10 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
                     node.querySelector?.('[data-type="code-block"]')) {
                   const now = Date.now();
                   // 如果在 Tab 按下后 100ms 内插入的代码块，认为是 Tab 触发的
-                  if (now - lastTabTime < 100) {
-                    console.log('[MutationObserver] 检测到 Tab 触发的代码块，移除并插入缩进');
-                    node.remove();
-                    vditorRef.current?.insertValue('　　'); // 2个全角空格
-                  }
+                    if (now - lastTabTime < 100) {
+                      node.remove();
+                      vditorRef.current?.insertValue('　　');
+                    }
                 }
               }
             }

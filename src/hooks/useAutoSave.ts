@@ -40,34 +40,22 @@ async function writeToFileSystem(docPath: string, content: string): Promise<bool
   // 从docPath中提取完整路径（去掉file://前缀）
   const fullPath = docPath.startsWith('file://') ? docPath.replace('file://', '') : docPath;
   
-  console.log('[FileSystem] 开始写入文件');
-  console.log('[FileSystem] docPath:', docPath);
-  console.log('[FileSystem] fullPath:', fullPath);
-  console.log('[FileSystem] isTauriCached():', isTauriCached());
-  
   try {
     if (isTauriCached()) {
-      // Tauri 环境
-      console.log('[FileSystem] 使用 Tauri writeTextFile');
       const { writeTextFile } = await import('@tauri-apps/plugin-fs');
       await writeTextFile(fullPath, content);
-      console.log('[FileSystem] 文件已写入:', fullPath);
       return true;
     } else {
-      // 浏览器环境
-      console.log('[FileSystem] 使用浏览器 File System Access API');
       const fileHandles = useFileStore.getState().fileHandles;
       const handle = fileHandles.get(fullPath);
       
       if (!handle) {
-        console.log('[FileSystem] 没有找到文件handle，无法写入:', fullPath);
         return false;
       }
       
       const writable = await handle.createWritable();
       await writable.write(content);
       await writable.close();
-      console.log('[FileSystem] 文件已写入:', fullPath);
       return true;
     }
   } catch (err) {

@@ -25,17 +25,12 @@ export const isTauriCached = (): boolean => {
       '__TAURI_INTERNALS__' in window ||
       navigator.userAgent.includes('Tauri')
     );
-    console.log('[Platform] 同步检测 Tauri:', _isTauriCache);
-    console.log('[Platform] __TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
-    console.log('[Platform] __TAURI_INTERNALS__:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
-    console.log('[Platform] userAgent:', navigator.userAgent);
   }
   return _isTauriCache;
 };
 
 export const waitForTauri = async (): Promise<boolean> => {
   if (_isTauriAsyncCache !== null) {
-    console.log('[Platform] 使用缓存的异步检测结果:', _isTauriAsyncCache);
     return _isTauriAsyncCache;
   }
   
@@ -44,14 +39,8 @@ export const waitForTauri = async (): Promise<boolean> => {
     const result = await checkTauri();
     _isTauriAsyncCache = result;
     _isTauriCache = result;
-    
-    console.log('[Platform] 异步检测 Tauri 完成:', result);
-    console.log('[Platform] __TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
-    console.log('[Platform] __TAURI_INTERNALS__:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
-    
     return result;
   } catch (e) {
-    console.error('[Platform] 异步检测失败:', e);
     _isTauriAsyncCache = false;
     return false;
   }
