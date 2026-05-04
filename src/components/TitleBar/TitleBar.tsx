@@ -14,11 +14,13 @@ export const TitleBar: React.FC = () => {
   const { theme, toggleTheme } = useSettingsStore();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
+  const [appWindow, setAppWindow] = useState<any>(null);
 
   useEffect(() => {
     if (isTauriCached()) {
       import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
         const win = getCurrentWindow();
+        setAppWindow(win);
         win.onResized(async () => {
           setIsMaximized(await win.isMaximized());
         });
@@ -27,24 +29,33 @@ export const TitleBar: React.FC = () => {
     }
   }, []);
 
-  const handleMinimize = async () => {
-    if (isTauriCached()) {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      getCurrentWindow().minimize();
+  const handleDrag = (e: React.MouseEvent) => {
+    if (appWindow && e.buttons === 1) {
+      appWindow.startDragging();
     }
   };
 
-  const handleToggleMaximize = async () => {
-    if (isTauriCached()) {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      getCurrentWindow().toggleMaximize();
+  const handleDoubleClick = () => {
+    if (appWindow) {
+      appWindow.toggleMaximize();
     }
   };
 
-  const handleClose = async () => {
-    if (isTauriCached()) {
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
-      getCurrentWindow().close();
+  const handleMinimize = () => {
+    if (appWindow) {
+      appWindow.minimize();
+    }
+  };
+
+  const handleToggleMaximize = () => {
+    if (appWindow) {
+      appWindow.toggleMaximize();
+    }
+  };
+
+  const handleClose = () => {
+    if (appWindow) {
+      appWindow.close();
     }
   };
 
@@ -52,22 +63,20 @@ export const TitleBar: React.FC = () => {
     <>
       <div 
         className="h-10 bg-[var(--titlebar-bg)] border-b border-[var(--editor-border)] flex items-center select-none"
-        data-tauri-drag-region
+        onMouseDown={handleDrag}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Tab 页签区域 */}
-        <div 
-          className="flex-1 flex items-end h-full overflow-x-auto"
-          data-tauri-drag-region
-        >
+        <div className="flex-1 flex items-end h-full min-w-0">
           {tabs.length === 0 ? (
-            <div className="flex items-center h-full px-4" data-tauri-drag-region>
+            <div className="flex items-center h-full px-4">
               <span className="text-sm text-[var(--editor-text-muted)] flex items-center gap-2">
                 <FileText size={14} />
                 MD Editor
               </span>
             </div>
           ) : (
-            <div className="flex items-end h-full" data-tauri-drag-region>
+            <div className="flex items-end h-full flex-1 min-w-0">
               {tabs.map((tabPath) => {
                 const isActive = tabPath === activeDocPath;
                 const doc = documents[tabPath];
@@ -78,9 +87,9 @@ export const TitleBar: React.FC = () => {
                   <div
                     key={tabPath}
                     className={`
-                      group relative flex items-center h-9 px-3 cursor-pointer
+                      group relative flex items-center h-[36px] px-3 cursor-pointer
                       transition-all duration-[var(--transition-fast)]
-                      min-w-[100px] max-w-[160px]
+                      flex-1 min-w-[80px] max-w-[180px]
                       ${isActive
                         ? 'bg-[var(--editor-bg)] text-[var(--editor-text)]'
                         : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-active-bg)] hover:text-[var(--editor-text)]'
@@ -130,12 +139,19 @@ export const TitleBar: React.FC = () => {
           )}
         </div>
 
+        {/* 右侧拖拽区域 - 始终保留一小块空间 */}
+        <div 
+          className="w-20 h-full flex-shrink-0"
+          onMouseDown={handleDrag}
+          onDoubleClick={handleDoubleClick}
+        />
+
         {/* 右侧操作区域 */}
-        <div className="flex items-center h-full px-1 gap-0.5" data-tauri-drag-region>
+        <div className="flex items-center h-full flex-shrink-0">
           {/* 保存按钮 */}
           {activeDocPath && (
             <button
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[var(--accent-500)] text-white hover:bg-[var(--accent-600)] transition-all"
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[var(--accent-500)] text-white hover:bg-[var(--accent-600)] transition-all mx-1"
               onClick={(e) => { e.stopPropagation(); saveToFile(); }}
               title="保存 (Ctrl+S)"
             >
@@ -198,7 +214,7 @@ export const TitleBar: React.FC = () => {
 interface TitleBarButtonProps {
   icon: LucideIcon;
   title: string;
-  onClick: (e: React.MouseEvent) => void;
+  onClick: () => void;
   isWindowControl?: boolean;
   isClose?: boolean;
   isActive?: boolean;
@@ -216,7 +232,7 @@ const TitleBarButton: React.FC<TitleBarButtonProps> = ({
     <button
       className={`
         flex items-center justify-center
-        ${isWindowControl ? 'w-11 h-10' : 'w-8 h-8 rounded-md'}
+        ${isWindowControl ? 'w-11 h-10' : 'w-8 h-8 rounded-md mx-0.5'}
         transition-all duration-[var(--transition-fast)]
         ${isClose
           ? 'hover:bg-[var(--error-500)] hover:text-white'
@@ -226,10 +242,13 @@ const TitleBarButton: React.FC<TitleBarButtonProps> = ({
         }
         text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)]
       `}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       title={title}
     >
-      <Icon size={isWindowControl ? 16 : 16} />
+      <Icon size={16} />
     </button>
   );
 };
