@@ -89,19 +89,28 @@ jobs:
           $VERSION = node -p "require('./package.json').version"
           $TAG = "v$VERSION"
           
+          # 查找 portable exe（非 setup 的 exe 文件）
           $exePath = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File | Where-Object { $_.Name -notlike "*setup*" } | Select-Object -First 1
           
           if ($exePath) {
             Write-Host "Found exe: $($exePath.FullName)"
             Copy-Item $exePath.FullName "MD-Editor-Portable-$TAG.exe"
-            gh release upload $TAG "MD-Editor-Portable-$TAG.exe" --clobber 2>$null
+            
+            # 等待 release 创建完成
+            Start-Sleep -Seconds 10
+            
+            # 上传到 release
+            gh release upload $TAG "MD-Editor-Portable-$TAG.exe" --clobber
             if ($LASTEXITCODE -eq 0) {
               Write-Host "Uploaded portable exe to release $TAG"
             } else {
-              Write-Host "Release $TAG not ready yet, portable exe available in artifacts"
+              Write-Host "Failed to upload portable exe"
+              exit 1
             }
           } else {
             Write-Host "Portable exe not found"
+            Write-Host "Available exe files:"
+            Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File | ForEach-Object { Write-Host "  $($_.Name)" }
           }
 
       - name: Upload artifacts (Windows)
