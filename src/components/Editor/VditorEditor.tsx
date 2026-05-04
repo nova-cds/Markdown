@@ -4,7 +4,7 @@ import 'vditor/dist/index.css';
 import './vditor-styles.css';
 import { useEditorStore, useFileStore, useSettingsStore } from '../../stores';
 import { useSaveToFile } from '../../hooks/useAutoSave';
-import { isTauriCached } from '../../utils/platform';
+import { isTauriCached, waitForTauri } from '../../utils/platform';
 
 interface VditorEditorProps {
   path: string;
@@ -342,63 +342,51 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       // 图片上传配置
       upload: {
         handler: async (files: File[]): Promise<null> => {
-          console.log('[ImageUpload] 开始处理图片');
+          console.log('[ImageUpload] ===== 开始处理图片 =====');
+          console.log('[ImageUpload] 文件数量:', files.length);
+          
+          const tauriDetected = await waitForTauri();
+          console.log('[ImageUpload] Tauri 环境检测结果:', tauriDetected);
           console.log('[ImageUpload] isTauriCached():', isTauriCached());
-          console.log('[ImageUpload] path:', path);
           
           const imageDirectory = useSettingsStore.getState().imageDirectory || 'img';
+          console.log('[ImageUpload] 图片目录配置:', imageDirectory);
           
-          // 没有打开文件夹，使用 base64
-          const { rootHandle } = useFileStore.getState();
+          const { rootHandle, rootPath } = useFileStore.getState();
           console.log('[ImageUpload] rootHandle:', rootHandle);
+          console.log('[ImageUpload] rootPath:', rootPath);
+          console.log('[ImageUpload] 当前文档路径:', path);
           
-          const isTauri = isTauriCached();
-          if (!rootHandle && !isTauri) {
-            alert('[ImageUpload] 没有打开文件夹且非 Tauri，使用 base64');
-            console.log('[ImageUpload] 没有打开文件夹且非 Tauri，使用 base64');
-            for (const file of files) {
-              const base64 = await fileToBase64(file);
-              const markdown = `![${file.name}](${base64})`;
-              vditorRef.current?.insertValue(markdown);
+          let docDir = '';
+          if (path.startsWith('file://')) {
+            const fullPath = path.replace('file://', '');
+            console.log('[ImageUpload] 完整路径:', fullPath);
+            const lastSlash = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'));
+            console.log('[ImageUpload] lastSlash 位置:', lastSlash);
+            if (lastSlash > 0) {
+              docDir = fullPath.substring(0, lastSlash);
             }
+          }
+          console.log('[ImageUpload] 文档目录:', docDir);
+          
+          if (!docDir) {
+            const errorMsg = `无法确定文档目录!\n\n路径信息:\n- 当前路径: ${path}\n- 提取的目录: ${docDir}\n\n环境信息:\n- Tauri: ${tauriDetected}\n- rootHandle: ${rootHandle}\n- rootPath: ${rootPath}`;
+            console.error('[ImageUpload]', errorMsg);
+            alert(errorMsg);
             return null;
           }
           
-          try {
-            // 获取当前文档所在目录路径
-            let docDir = '';
-            if (path.startsWith('file://')) {
-              const fullPath = path.replace('file://', '');
-              console.log('[ImageUpload] fullPath:', fullPath);
-              const lastSlash = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'));
-              console.log('[ImageUpload] lastSlash:', lastSlash);
-              if (lastSlash > 0) {
-                docDir = fullPath.substring(0, lastSlash);
-              }
-            }
+          if (tauriDetected) {
+            console.log('[ImageUpload] 进入 Tauri 处理分支');
             
-            console.log('[ImageUpload] docDir:', docDir);
-            
-            if (!docDir) {
-              alert(`[ImageUpload] docDir 为空!\npath: ${path}`);
-              console.log('[ImageUpload] docDir 为空，使用 base64');
-              for (const file of files) {
-                const base64 = await fileToBase64(file);
-                const markdown = `![${file.name}](${base64})`;
-                vditorRef.current?.insertValue(markdown);
-              }
-              return null;
-            }
-            
-            if (isTauriCached()) {
-              // Tauri 环境 - 使用正确的路径分隔符
+            try {
               const pathSep = '\\';
               const imgDirPath = `${docDir}${pathSep}${imageDirectory}`;
-              console.log('[ImageUpload] imgDirPath:', imgDirPath);
+              console.log('[ImageUpload] 图片目录完整路径:', imgDirPath);
               
               const { mkdir, writeFile } = await import('@tauri-apps/plugin-fs');
               
-              // 创建图片目录
+              console.log('[ImageUpload] 尝试创建目录...');
               try {
                 await mkdir(imgDirPath, { recursive: true });
                 console.log('[ImageUpload] 目录创建成功');
@@ -406,81 +394,95 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
                 console.log('[ImageUpload] 目录已存在或创建失败:', e);
               }
               
-              // 保存每个图片
               for (const file of files) {
+                console.log('[ImageUpload] 处理文件:', file.name, '大小:', file.size);
+                
                 const timestamp = Date.now();
                 const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
                 const fileName = `${timestamp}_${safeName}`;
                 const filePath = `${imgDirPath}${pathSep}${fileName}`;
                 
-                console.log('[ImageUpload] 保存图片到:', filePath);
+                console.log('[ImageUpload] 目标文件路径:', filePath);
                 
-                // 读取文件内容
                 const arrayBuffer = await file.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
                 
+                console.log('[ImageUpload] 开始写入文件...');
                 await writeFile(filePath, uint8Array);
-                
-                // 插入相对路径的 markdown 图片
-                const relativePath = `${imageDirectory}/${fileName}`;
-                const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
-                vditorRef.current?.insertValue(markdown);
-                
-                console.log('[ImageUpload] 图片已保存:', relativePath);
-              }
-            } else {
-              // 浏览器环境
-              const { dirHandles, refreshFileTree } = useFileStore.getState();
-              let docDirHandle: FileSystemDirectoryHandle = rootHandle!;
-              
-              // 从 path 中提取目录路径
-              if (path.startsWith('file://')) {
-                const fullPath = path.replace('file://', '');
-                const lastSlash = fullPath.lastIndexOf('/');
-                if (lastSlash > 0) {
-                  const dirPath = fullPath.substring(0, lastSlash);
-                  const foundHandle = dirHandles.get(dirPath);
-                  if (foundHandle) {
-                    docDirHandle = foundHandle;
-                  }
-                }
-              }
-              
-              // 在当前文档所在目录下创建图片目录
-              const imgDir = await docDirHandle.getDirectoryHandle(imageDirectory, { create: true });
-              
-              // 保存每个图片
-              for (const file of files) {
-                const timestamp = Date.now();
-                const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
-                const fileName = `${timestamp}_${safeName}`;
-                
-                const fileHandle = await imgDir.getFileHandle(fileName, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(file);
-                await writable.close();
+                console.log('[ImageUpload] 文件写入成功');
                 
                 const relativePath = `${imageDirectory}/${fileName}`;
                 const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
                 vditorRef.current?.insertValue(markdown);
                 
-                console.log('[ImageUpload] 图片已保存:', relativePath);
+                console.log('[ImageUpload] 图片保存成功，相对路径:', relativePath);
               }
               
-              // 图片上传后刷新文件树
-              refreshFileTree();
-            }
-          } catch (e) {
-            console.error('[ImageUpload] 保存图片失败:', e);
-            alert(`[ImageUpload] 保存图片失败!\npath: ${path}\nisTauri: ${isTauriCached()}\nrootHandle: ${rootHandle}\nerror: ${e}`);
-            // 回退到 base64
-            for (const file of files) {
-              const base64 = await fileToBase64(file);
-              const markdown = `![${file.name}](${base64})`;
-              vditorRef.current?.insertValue(markdown);
+              console.log('[ImageUpload] ===== 图片处理完成 =====');
+              return null;
+              
+            } catch (e) {
+              const errorMsg = `保存图片失败!\n\n错误信息:\n${e}\n\n环境信息:\n- Tauri: ${tauriDetected}\n- 文档目录: ${docDir}\n- 图片目录: ${imageDirectory}\n- 当前路径: ${path}`;
+              console.error('[ImageUpload]', errorMsg);
+              alert(errorMsg);
+              return null;
             }
           }
-          return null;
+          
+          console.log('[ImageUpload] 进入浏览器处理分支');
+          
+          if (!rootHandle) {
+            const errorMsg = `未打开文件夹!\n\n请先打开文件夹后再粘贴图片。\n\n环境信息:\n- Tauri: ${tauriDetected}\n- rootHandle: ${rootHandle}\n- rootPath: ${rootPath}`;
+            console.error('[ImageUpload]', errorMsg);
+            alert(errorMsg);
+            return null;
+          }
+          
+          try {
+            const { dirHandles, refreshFileTree } = useFileStore.getState();
+            let docDirHandle: FileSystemDirectoryHandle = rootHandle!;
+            
+            if (path.startsWith('file://')) {
+              const fullPath = path.replace('file://', '');
+              const lastSlash = fullPath.lastIndexOf('/');
+              if (lastSlash > 0) {
+                const dirPath = fullPath.substring(0, lastSlash);
+                const foundHandle = dirHandles.get(dirPath);
+                if (foundHandle) {
+                  docDirHandle = foundHandle;
+                }
+              }
+            }
+            
+            const imgDir = await docDirHandle.getDirectoryHandle(imageDirectory, { create: true });
+            
+            for (const file of files) {
+              const timestamp = Date.now();
+              const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
+              const fileName = `${timestamp}_${safeName}`;
+              
+              const fileHandle = await imgDir.getFileHandle(fileName, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(file);
+              await writable.close();
+              
+              const relativePath = `${imageDirectory}/${fileName}`;
+              const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
+              vditorRef.current?.insertValue(markdown);
+              
+              console.log('[ImageUpload] 图片已保存:', relativePath);
+            }
+            
+            refreshFileTree();
+            console.log('[ImageUpload] ===== 图片处理完成 =====');
+            return null;
+            
+          } catch (e) {
+            const errorMsg = `保存图片失败!\n\n错误信息:\n${e}\n\n环境信息:\n- Tauri: ${tauriDetected}\n- rootHandle: ${rootHandle}\n- 文档目录: ${docDir}`;
+            console.error('[ImageUpload]', errorMsg);
+            alert(errorMsg);
+            return null;
+          }
         },
       },
       // Tab行为配置：由自定义 handler 处理，这里禁用

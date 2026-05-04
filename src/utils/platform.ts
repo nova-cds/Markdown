@@ -16,24 +16,51 @@ export const isTauri = async (): Promise<boolean> => {
 // 同步检测（用于初始化阶段）
 // Tauri 2.0 withGlobalTauri 模式下，window.__TAURI__ 存在
 let _isTauriCache: boolean | null = null;
+let _isTauriAsyncCache: boolean | null = null;
+
 export const isTauriCached = (): boolean => {
   if (_isTauriCache === null) {
-    // 检测方式优先级：
-    // 1. __TAURI__ 全局对象（withGlobalTauri 模式）
-    // 2. __TAURI_INTERNALS__ 内部对象
     _isTauriCache = typeof window !== 'undefined' && (
-      '__TAURI__' in window || '__TAURI_INTERNALS__' in window
+      '__TAURI__' in window ||
+      '__TAURI_INTERNALS__' in window ||
+      navigator.userAgent.includes('Tauri')
     );
-    console.log('[Platform] Tauri 环境检测:', _isTauriCache);
-    console.log('[Platform] __TAURI__ exists:', typeof window !== 'undefined' && '__TAURI__' in window);
-    console.log('[Platform] __TAURI_INTERNALS__ exists:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
+    console.log('[Platform] 同步检测 Tauri:', _isTauriCache);
+    console.log('[Platform] __TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
+    console.log('[Platform] __TAURI_INTERNALS__:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
+    console.log('[Platform] userAgent:', navigator.userAgent);
   }
   return _isTauriCache;
+};
+
+export const waitForTauri = async (): Promise<boolean> => {
+  if (_isTauriAsyncCache !== null) {
+    console.log('[Platform] 使用缓存的异步检测结果:', _isTauriAsyncCache);
+    return _isTauriAsyncCache;
+  }
+  
+  try {
+    const { isTauri: checkTauri } = await import('@tauri-apps/api/core');
+    const result = await checkTauri();
+    _isTauriAsyncCache = result;
+    _isTauriCache = result;
+    
+    console.log('[Platform] 异步检测 Tauri 完成:', result);
+    console.log('[Platform] __TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
+    console.log('[Platform] __TAURI_INTERNALS__:', typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window);
+    
+    return result;
+  } catch (e) {
+    console.error('[Platform] 异步检测失败:', e);
+    _isTauriAsyncCache = false;
+    return false;
+  }
 };
 
 // 重置缓存（用于测试）
 export const resetTauriCache = () => {
   _isTauriCache = null;
+  _isTauriAsyncCache = null;
 };
 
 // 检测是否在浏览器环境且支持 File System Access API
