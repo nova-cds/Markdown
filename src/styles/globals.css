@@ -77,6 +77,9 @@
   --tab-border: #e2e8f0;
   --tab-active-indicator: #3b82f6;
 
+  /* 标题栏颜色 */
+  --titlebar-bg: #f8fafc;
+
   /* 状态栏颜色 */
   --statusbar-bg: #f8fafc;
   --statusbar-text: #64748b;
@@ -137,6 +140,9 @@
   --tab-inactive-bg: #1e293b;
   --tab-border: #334155;
   --tab-active-indicator: #60a5fa;
+
+  /* 标题栏颜色 */
+  --titlebar-bg: #1e293b;
 
   /* 状态栏颜色 */
   --statusbar-bg: #1e293b;

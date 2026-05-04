@@ -3,7 +3,6 @@ name: Build Desktop App
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -73,39 +72,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: 'MD Editor v__VERSION__'
-          releaseBody: 'See the assets to download and install this version.'
-          releaseDraft: true
-          prerelease: false
-
-      - name: Upload portable exe to Release (Windows)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $VERSION = node -p "require('./package.json').version"
-          $TAG = "v$VERSION"
-          
-          # 查找实际的可执行文件名
-          $exePath = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File | Where-Object { $_.Name -notlike "*setup*" } | Select-Object -First 1
-          
-          if ($exePath) {
-            Write-Host "Found exe: $($exePath.FullName)"
-            Copy-Item $exePath.FullName "MD-Editor-Portable-$TAG.exe"
-            
-            # 尝试上传绿色版 exe 到 release
-            gh release upload $TAG "MD-Editor-Portable-$TAG.exe" --clobber 2>$null
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Uploaded portable exe to release $TAG"
-            } else {
-              Write-Host "Release $TAG not ready yet, portable exe available in artifacts"
-            }
-          } else {
-            Write-Host "Portable exe not found"
-          }
 
       - name: Upload artifacts (Windows)
         if: matrix.platform == 'windows-latest'

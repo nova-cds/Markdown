@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Sidebar } from '../Sidebar/Sidebar';
-import { TabBar } from '../Tabs/TabBar';
+import { TitleBar } from '../TitleBar/TitleBar';
 import { EditorContainer } from '../Editor/EditorContainer';
 import { SettingsPanel } from '../Settings/SettingsPanel';
-import { Toolbar } from '../Toolbar/Toolbar';
 import { useEditorStore } from '../../stores';
 import { useAutoSave, useTheme, useFileChangeDetection } from '../../hooks';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -58,11 +57,8 @@ export const Layout: React.FC = () => {
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top Toolbar */}
-        <Toolbar />
-
-        {/* Tab bar */}
-        <TabBar />
+        {/* TitleBar - 包含 Tab 页签和窗口控制 */}
+        <TitleBar />
 
         {/* Editor area */}
         <div className="flex-1 overflow-hidden">

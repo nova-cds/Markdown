@@ -17,7 +17,8 @@ import {
   X,
   RefreshCw,
   Trash2,
-  LucideIcon
+  LucideIcon,
+  FilePlus
 } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -51,7 +52,7 @@ interface DeleteState {
 export const Sidebar: React.FC = () => {
   const { fileTree, rootPath, setFileTree, setFileHandle, setDirHandle, rootHandle, dirHandles } = useFileStore();
   const { openDocument, renameDocument, documents } = useEditorStore();
-  const { readDirectoryRecursive, readDirectoryTauri } = useFileOperations();
+  const { readDirectoryRecursive, readDirectoryTauri, handleNewFile, handleOpenFile, handleOpenFolder } = useFileOperations();
 
   // 获取 Tauri 环境下的完整根路径
   const getFullRootPath = useCallback(() => {
@@ -787,8 +788,29 @@ export const Sidebar: React.FC = () => {
         <span className="text-xs font-semibold text-[var(--sidebar-text-muted)] uppercase tracking-wider">
           文件浏览器
         </span>
-        {rootHandle && (
-          <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1">
+          <button
+            className="p-1.5 rounded-md hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] transition-colors"
+            onClick={handleNewFile}
+            title="新建文档"
+          >
+            <FilePlus size={14} />
+          </button>
+          <button
+            className="p-1.5 rounded-md hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] transition-colors"
+            onClick={handleOpenFile}
+            title="打开文件"
+          >
+            <FileText size={14} />
+          </button>
+          <button
+            className="p-1.5 rounded-md hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] transition-colors"
+            onClick={handleOpenFolder}
+            title="打开文件夹"
+          >
+            <FolderOpen size={14} />
+          </button>
+          {rootHandle && (
             <button
               className="p-1.5 rounded-md hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] transition-colors"
               onClick={refreshTree}
@@ -796,26 +818,8 @@ export const Sidebar: React.FC = () => {
             >
               <RefreshCw size={14} />
             </button>
-            <button
-              className="p-1.5 rounded-md hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] transition-colors"
-              onClick={() => {
-                setNewFileState({ parentPath: selectedDir || rootPath || '' });
-              }}
-              title={`新建文件${selectedDir ? ` (在 ${selectedDir.split('/').pop()} 中)` : ''}`}
-            >
-              <Plus size={14} />
-            </button>
-            <button
-              className="p-1.5 rounded-md hover:bg-[var(--sidebar-hover)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] transition-colors"
-              onClick={() => {
-                setNewDirState({ parentPath: selectedDir || rootPath || '' });
-              }}
-              title={`新建文件夹${selectedDir ? ` (在 ${selectedDir.split('/').pop()} 中)` : ''}`}
-            >
-              <FolderPlus size={14} />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* 文件树 */}
