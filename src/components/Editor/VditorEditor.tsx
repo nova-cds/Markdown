@@ -285,13 +285,17 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         enable: true,
         position: 'right',
       },
-      // 禁用代码块预览
+      cdn: 'https://unpkg.com/vditor@3.11.2',
       preview: {
         markdown: {
-          codeBlockPreview: false,
-        },
+          codeBlockPreview: true,
+          mathBlockPreview: true,
+          toc: true,
+          mark: true,
+          sup: true,
+          sub: true,
+        } as any,
       },
-      // 禁用 hint 自动补全
       hint: {
         parse: false,
         emoji: {},
@@ -329,6 +333,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         {
           name: 'more',
           toolbar: [
+            'export',
             'fullscreen',
             'preview',
             'devtools',
@@ -340,6 +345,14 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       // 编辑器配置
       cache: {
         enable: false,
+      },
+      // 字数统计配置
+      counter: {
+        enable: true,
+        type: 'text',
+        after: (length: number) => {
+          useEditorStore.getState().setWordCount(length);
+        },
       },
       // 图片上传配置
       upload: {
@@ -499,8 +512,98 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         vditorRef.current = vditor;
         isInitializedRef.current = true;
         
+        // 手动启用上标和下标功能（等待官方发布 3.11.3）
+        try {
+          const lute = (vditor as any).vditor?.lute;
+          if (lute) {
+            lute.SetSup(true);
+            lute.SetSub(true);
+            // 重新渲染当前内容
+            const currentValue = vditor.getValue();
+            vditor.setValue(currentValue);
+          }
+        } catch (e) {
+          console.warn('[Lute] 启用上标/下标失败:', e);
+        }
+        
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
+        
+        // TOC 目录点击跳转处理
+        const handleTocClick = (e: MouseEvent) => {
+          const target = e.target as HTMLElement;
+          
+          // 查找 TOC 容器内的点击目标
+          const tocContainer = target.closest('.vditor-toc');
+          if (!tocContainer) return;
+          
+          // 查找最近的列表项或链接
+          const tocItem = target.closest('li');
+          if (!tocItem) return;
+          
+          // 获取列表项内的链接或 span
+          const link = tocItem.querySelector('a, span[data-target-id]') as HTMLElement;
+          if (!link) return;
+          
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // 获取目标 ID
+          let headingId: string | null = null;
+          if (link.tagName === 'A') {
+            const href = link.getAttribute('href');
+            if (href && href.startsWith('#')) {
+              headingId = href.substring(1);
+            }
+          } else {
+            headingId = link.getAttribute('data-target-id');
+          }
+          
+          if (headingId) {
+            // 在 IR 模式下，标题可能没有 id，尝试通过文本内容查找
+            const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+            if (!vditorReset) return;
+            
+            // 先尝试通过 id 查找
+            let heading = vditorReset.querySelector(`[id="${headingId}"]`) as HTMLElement;
+            
+            // 如果找不到，尝试通过标题文本查找
+            if (!heading) {
+              const headingText = decodeURIComponent(headingId);
+              const headings = vditorReset.querySelectorAll('h1, h2, h3, h4, h5, h6');
+              for (const h of headings) {
+                if (h.textContent?.trim() === headingText || 
+                    h.getAttribute('data-id') === headingId) {
+                  heading = h as HTMLElement;
+                  break;
+                }
+              }
+            }
+            
+            if (heading) {
+              vditorReset.scrollTop = heading.offsetTop - 20;
+            }
+          }
+        };
+        
+        containerRef.current?.addEventListener('click', handleTocClick);
+        (vditorRef.current as any)._tocClickHandler = handleTocClick;
+        
+        // 渲染 Mermaid 图表
+        const renderMermaid = () => {
+          const mermaidElements = containerRef.current?.querySelectorAll('.vditor-ir pre.vditor-reset .mermaid');
+          if (mermaidElements && mermaidElements.length > 0) {
+            try {
+              const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'classic';
+              Vditor.mermaidRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2', theme);
+            } catch (e) {
+              console.warn('[Mermaid] 渲染失败:', e);
+            }
+          }
+        };
+        
+        // 初始渲染
+        setTimeout(renderMermaid, 100);
         
         // 检测光标是否在行首
         const isAtLineStart = (): boolean => {
@@ -586,6 +689,25 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         containerRef.current?.addEventListener('keydown', tabKeydownHandler, true);
         (vditorRef.current as any)._tabKeydownHandler = tabKeydownHandler;
         
+        // Mermaid 渲染防抖
+        let mermaidDebounceTimer: number | null = null;
+        const debouncedRenderMermaid = () => {
+          if (mermaidDebounceTimer) {
+            clearTimeout(mermaidDebounceTimer);
+          }
+          mermaidDebounceTimer = window.setTimeout(() => {
+            const mermaidElements = containerRef.current?.querySelectorAll('.vditor-ir .vditor-reset .mermaid');
+            if (mermaidElements && mermaidElements.length > 0) {
+              try {
+                const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'classic';
+                Vditor.mermaidRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2', theme);
+              } catch (e) {
+                console.warn('[Mermaid] 渲染失败:', e);
+              }
+            }
+          }, 300);
+        };
+        
         // 监听DOM变化，处理新插入的图片和代码块
         const imageObserver = new MutationObserver((mutations) => {
           for (const mutation of mutations) {
@@ -596,6 +718,12 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
               } else if (node instanceof HTMLElement) {
                 const imgs = node.querySelectorAll('img');
                 imgs.forEach(img => handleLocalImage(img, path));
+                
+                // 检测 Mermaid 代码块
+                if (node.classList?.contains('mermaid') || 
+                    node.querySelector?.('.mermaid')) {
+                  debouncedRenderMermaid();
+                }
                 
                 // 检测是否是 Tab 触发的代码块
                 if (node.getAttribute?.('data-type') === 'code-block' || 
@@ -684,6 +812,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         const handleKeyDown = (vditorRef.current as any)._handleKeyDown;
         const vditorReset = (vditorRef.current as any)._vditorReset;
         const tabKeydownHandler = (vditorRef.current as any)._tabKeydownHandler;
+        const tocClickHandler = (vditorRef.current as any)._tocClickHandler;
         
         if (imageObserver) imageObserver.disconnect();
         if (handleKeyDown && vditorReset) {
@@ -691,6 +820,9 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         }
         if (tabKeydownHandler && containerRef.current) {
           containerRef.current.removeEventListener('keydown', tabKeydownHandler, true);
+        }
+        if (tocClickHandler && containerRef.current) {
+          containerRef.current.removeEventListener('click', tocClickHandler);
         }
         vditorRef.current.destroy();
         vditorRef.current = null;

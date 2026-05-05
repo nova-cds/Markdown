@@ -100,6 +100,7 @@ export const Layout: React.FC = () => {
 const StatusBar: React.FC = () => {
   const activeDocPath = useEditorStore((state) => state.activeDocPath);
   const saveStatus = useEditorStore((state) => state.saveStatus);
+  const wordCount = useEditorStore((state) => state.wordCount);
 
   const getStatusText = () => {
     switch (saveStatus) {
@@ -131,6 +132,7 @@ const StatusBar: React.FC = () => {
         </span>
       </div>
       <div className="flex items-center gap-4 text-[var(--statusbar-text)]">
+        <span className="opacity-70">{wordCount} 字</span>
         <span className={`flex items-center gap-1 ${getStatusColor()}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${
             saveStatus === 'saving' ? 'bg-[var(--warning-500)] animate-pulse' :

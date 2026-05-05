@@ -258,3 +258,48 @@
   overflow-wrap: break-word !important;
   white-space: normal !important;
 }
+
+/* TOC 目录样式修复 */
+.vditor .vditor-ir pre.vditor-reset .vditor-toc,
+.vditor .vditor-content .vditor-reset .vditor-toc {
+  padding: 8px 16px !important;
+  margin: 16px 0 !important;
+  background-color: var(--editor-code-bg, #f5f5f5) !important;
+  border-radius: 4px !important;
+}
+
+.vditor .vditor-ir pre.vditor-reset .vditor-toc ul,
+.vditor .vditor-content .vditor-reset .vditor-toc ul {
+  margin: 4px 0 !important;
+  padding-left: 1.5em !important;
+  list-style: none !important;
+}
+
+.vditor .vditor-ir pre.vditor-reset .vditor-toc li,
+.vditor .vditor-content .vditor-reset .vditor-toc li {
+  line-height: 1.8 !important;
+  margin: 4px 0 !important;
+}
+
+.vditor .vditor-ir pre.vditor-reset .vditor-toc a,
+.vditor .vditor-content .vditor-reset .vditor-toc a {
+  color: var(--editor-link, #3b82f6) !important;
+  text-decoration: none !important;
+}
+
+.vditor .vditor-ir pre.vditor-reset .vditor-toc a:hover {
+  text-decoration: underline !important;
+}
+
+/* Mermaid 图表样式 */
+.vditor .vditor-ir pre.vditor-reset .mermaid,
+.vditor .vditor-content .vditor-reset .mermaid {
+  background-color: transparent !important;
+  text-align: center !important;
+  overflow-x: auto !important;
+}
+
+.dark .vditor .vditor-ir pre.vditor-reset .vditor-toc,
+.dark .vditor .vditor-content .vditor-reset .vditor-toc {
+  background-color: var(--editor-code-bg, #1e293b) !important;
+}
