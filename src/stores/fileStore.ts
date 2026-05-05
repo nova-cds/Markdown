@@ -58,22 +58,18 @@ export const useFileStore = create<FileState>((set, get) => ({
     const { rootHandle, rootPath, dirHandles } = get();
     
     if (!rootHandle || !rootPath) {
-      console.log('[RefreshFileTree] 没有打开的文件夹');
       return;
     }
     
-    console.log('[RefreshFileTree] 开始刷新文件树...');
     set({ isLoading: true });
     
     try {
-      // 递归读取目录的辅助函数
       const readDirectoryRecursive = async (
         dirHandle: FileSystemDirectoryHandle, 
         basePath: string
       ): Promise<TreeNode[]> => {
         const nodes: TreeNode[] = [];
         
-        // 保存目录句柄
         const newDirHandles = new Map(get().dirHandles);
         newDirHandles.set(basePath, dirHandle);
         set({ dirHandles: newDirHandles });
@@ -100,7 +96,6 @@ export const useFileStore = create<FileState>((set, get) => ({
           }
         }
         
-        // 排序：目录在前，文件在后
         nodes.sort((a, b) => {
           if (a.isDir && !b.isDir) return -1;
           if (!a.isDir && b.isDir) return 1;
@@ -110,10 +105,8 @@ export const useFileStore = create<FileState>((set, get) => ({
         return nodes;
       };
       
-      // 重新扫描目录
       const tree = await readDirectoryRecursive(rootHandle, rootPath);
       set({ fileTree: tree, isLoading: false });
-      console.log('[RefreshFileTree] 文件树刷新完成');
     } catch (err) {
       console.error('[RefreshFileTree] 刷新失败:', err);
       set({ isLoading: false });

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useSettingsStore } from '../../stores/settingsStore';
-import { Settings, X, Sun, Moon, Monitor, Image, Save, Info } from 'lucide-react';
+import { useSettingsStore, EMBED_MAX_DEPTH_MIN, EMBED_MAX_DEPTH_MAX, EMBED_MAX_COUNT_MIN, EMBED_MAX_COUNT_MAX } from '../../stores/settingsStore';
+import { Settings, X, Sun, Moon, Monitor, Image, Save, Info, FileText } from 'lucide-react';
 
 export const SettingsPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,10 +9,14 @@ export const SettingsPanel: React.FC = () => {
     imageDirectory,
     autoSave,
     autoSaveDelay,
+    embedMaxDepth,
+    embedMaxCount,
     setTheme,
     setImageDirectory,
     setAutoSave,
     setAutoSaveDelay,
+    setEmbedMaxDepth,
+    setEmbedMaxCount,
   } = useSettingsStore();
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -31,6 +35,20 @@ export const SettingsPanel: React.FC = () => {
     const value = parseInt(e.target.value, 10);
     if (!isNaN(value) && value >= 0) {
       setAutoSaveDelay(value);
+    }
+  };
+
+  const handleEmbedMaxDepthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value)) {
+      setEmbedMaxDepth(value);
+    }
+  };
+
+  const handleEmbedMaxCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value)) {
+      setEmbedMaxCount(value);
     }
   };
 
@@ -172,6 +190,55 @@ export const SettingsPanel: React.FC = () => {
                       />
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Embed settings */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText size={16} className="text-[var(--accent-400)]" />
+                  <h3 className="text-sm font-medium text-[var(--editor-text)]">预览模式额外渲染md文档限制</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="p-3 bg-[var(--editor-surface)] rounded-lg">
+                    <label className="block text-sm text-[var(--editor-text-secondary)] mb-2">
+                      最大嵌套深度
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={embedMaxDepth}
+                        onChange={handleEmbedMaxDepthChange}
+                        min={EMBED_MAX_DEPTH_MIN}
+                        max={EMBED_MAX_DEPTH_MAX}
+                        className="w-20 px-3 py-2 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-lg text-[var(--editor-text)] focus:outline-none focus:border-[var(--accent-500)] focus:ring-2 focus:ring-[var(--accent-500)]/20 transition-all"
+                      />
+                      <span className="text-xs text-[var(--editor-text-muted)]">
+                        (范围 {EMBED_MAX_DEPTH_MIN}-{EMBED_MAX_DEPTH_MAX})
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-[var(--editor-surface)] rounded-lg">
+                    <label className="block text-sm text-[var(--editor-text-secondary)] mb-2">
+                      最大嵌入文档数
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={embedMaxCount}
+                        onChange={handleEmbedMaxCountChange}
+                        min={EMBED_MAX_COUNT_MIN}
+                        max={EMBED_MAX_COUNT_MAX}
+                        className="w-20 px-3 py-2 bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-lg text-[var(--editor-text)] focus:outline-none focus:border-[var(--accent-500)] focus:ring-2 focus:ring-[var(--accent-500)]/20 transition-all"
+                      />
+                      <span className="text-xs text-[var(--editor-text-muted)]">
+                        (范围 {EMBED_MAX_COUNT_MIN}-{EMBED_MAX_COUNT_MAX})
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-[var(--editor-text-muted)]">
+                    💡 数值越大，渲染时间越长
+                  </p>
                 </div>
               </div>
 

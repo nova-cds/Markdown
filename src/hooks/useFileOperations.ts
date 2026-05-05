@@ -20,8 +20,6 @@ export const useFileOperations = () => {
   // 打开本地文件
   const handleOpenFile = useCallback(async () => {
     if (isTauriCached()) {
-      // Tauri 环境：使用原生对话框
-      console.log('[OpenFile] 使用 Tauri 对话框');
       const { open } = await import('@tauri-apps/plugin-dialog');
       const { readTextFile } = await import('@tauri-apps/plugin-fs');
       
@@ -37,15 +35,12 @@ export const useFileOperations = () => {
             const content = await readTextFile(filePath as string);
             const fileName = (filePath as string).split(/[/\\]/).pop() || 'untitled.md';
             openDocument(`file://${filePath}`, content, false);
-            console.log(`[OpenFile] 加载: ${fileName}`);
           } catch (err) {
             console.error('读取文件失败:', err);
           }
         }
       }
     } else {
-      // 浏览器环境：使用 input 元素
-      console.log('[OpenFile] 使用浏览器 input');
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.md,.markdown,.txt';
@@ -60,7 +55,6 @@ export const useFileOperations = () => {
           const fileName = file.name;
           const docPath = `file://${fileName}`;
           openDocument(docPath, content, false);
-          console.log(`[OpenFile] 加载: ${fileName}`);
         }
       };
       

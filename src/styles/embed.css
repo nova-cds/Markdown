@@ -1,0 +1,341 @@
+/* 嵌入文档样式 - 高优先级 */
+.embed-container {
+  margin: 12px 0 !important;
+  padding: 12px 16px !important;
+  border-left: 3px solid var(--accent-500, #3b82f6) !important;
+  background: var(--editor-surface, #f8f9fa) !important;
+  border-radius: 0 8px 8px 0 !important;
+  transition: all 0.2s ease !important;
+  position: relative !important;
+  clear: both !important;
+  /* 重置可能的引用样式 */
+  font-style: normal !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.embed-container * {
+  font-style: normal !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.embed-container:hover {
+  border-left-color: var(--accent-400, #60a5fa) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+.embed-container--error {
+  border-left-color: var(--error-500, #ef4444) !important;
+  background: var(--error-50, #fef2f2) !important;
+}
+
+.embed-container--warning {
+  border-left-color: var(--warning-500, #f59e0b) !important;
+  background: var(--warning-50, #fffbeb) !important;
+}
+
+.embed-container--loading {
+  opacity: 0.7 !important;
+}
+
+.embed-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 10px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid var(--editor-border, #e5e7eb) !important;
+  font-style: normal !important;
+  opacity: 1 !important;
+}
+
+.embed-icon {
+  font-size: 14px !important;
+  opacity: 0.8 !important;
+  font-style: normal !important;
+}
+
+.embed-title {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--editor-text, #1f2937) !important;
+  flex: 1 !important;
+  font-style: normal !important;
+  opacity: 1 !important;
+}
+
+.embed-link {
+  font-size: 12px !important;
+  color: var(--accent-500, #3b82f6) !important;
+  text-decoration: none !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+  font-style: normal !important;
+  opacity: 1 !important;
+}
+
+.embed-link:hover {
+  background: var(--accent-100, #dbeafe) !important;
+  color: var(--accent-600, #2563eb) !important;
+}
+
+.embed-content {
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  color: var(--editor-text, #1f2937) !important;
+  max-height: 400px !important;
+  overflow-y: auto !important;
+  font-style: normal !important;
+  opacity: 1 !important;
+}
+
+/* 确保嵌入内容中的所有元素都有正确的颜色 */
+.embed-content *,
+.embed-content p,
+.embed-content span,
+.embed-content div,
+.embed-content li,
+.embed-content td,
+.embed-content th {
+  color: var(--editor-text, #1f2937) !important;
+  font-style: normal !important;
+  opacity: 1 !important;
+}
+
+.embed-content.vditor-reset {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.embed-content h1,
+.embed-content h2,
+.embed-content h3,
+.embed-content h4,
+.embed-content h5,
+.embed-content h6 {
+  color: var(--editor-text, #1f2937) !important;
+  margin-top: 16px !important;
+  margin-bottom: 8px !important;
+  font-weight: 600 !important;
+  font-style: normal !important;
+}
+
+.embed-content h1:first-child,
+.embed-content h2:first-child,
+.embed-content h3:first-child {
+  margin-top: 0 !important;
+}
+
+.embed-content p {
+  color: var(--editor-text, #1f2937) !important;
+  margin: 8px 0 !important;
+  font-style: normal !important;
+}
+
+.embed-content a {
+  color: var(--accent-500, #3b82f6) !important;
+  text-decoration: none !important;
+  font-style: normal !important;
+}
+
+.embed-content a:hover {
+  text-decoration: underline !important;
+  color: var(--accent-600, #2563eb) !important;
+}
+
+.embed-content code {
+  background: var(--editor-code-bg, #f1f5f9) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  color: var(--editor-text, #1f2937) !important;
+  font-style: normal !important;
+}
+
+.embed-content pre {
+  background: var(--editor-code-bg, #f1f5f9) !important;
+  padding: 12px !important;
+  border-radius: 6px !important;
+  overflow-x: auto !important;
+  font-style: normal !important;
+}
+
+.embed-content pre code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-style: normal !important;
+}
+
+.embed-content ul,
+.embed-content ol {
+  margin: 8px 0 !important;
+  padding-left: 24px !important;
+  font-style: normal !important;
+}
+
+.embed-content li {
+  margin: 4px 0 !important;
+  color: var(--editor-text, #1f2937) !important;
+  font-style: normal !important;
+}
+
+.embed-content blockquote {
+  border-left: 3px solid var(--accent-400, #60a5fa) !important;
+  padding-left: 12px !important;
+  margin: 8px 0 !important;
+  color: var(--editor-text-secondary, #6b7280) !important;
+  background: transparent !important;
+  font-style: italic !important;
+}
+
+.embed-content blockquote * {
+  color: var(--editor-text-secondary, #6b7280) !important;
+}
+
+.embed-content table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 8px 0 !important;
+}
+
+.embed-content th,
+.embed-content td {
+  border: 1px solid var(--editor-border, #e5e7eb) !important;
+  padding: 8px !important;
+  text-align: left !important;
+  color: var(--editor-text, #1f2937) !important;
+}
+
+.embed-content th {
+  background: var(--editor-surface, #f8f9fa) !important;
+  font-weight: 600 !important;
+}
+
+.embed-content img {
+  max-width: 100% !important;
+  border-radius: 4px !important;
+}
+
+.embed-content .embed-container {
+  margin: 8px 0 !important;
+  padding: 8px 12px !important;
+  border-left-width: 2px !important;
+}
+
+.embed-content .embed-header {
+  margin-bottom: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.embed-content .embed-content {
+  font-size: 13px !important;
+  max-height: 300px !important;
+}
+
+.embed-content .embed-content .embed-container {
+  border-left-width: 1px !important;
+}
+
+.embed-content .embed-content .embed-content {
+  max-height: 200px !important;
+}
+
+.embed-loading {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  color: var(--editor-text-muted, #9ca3af) !important;
+  font-size: 13px !important;
+  padding: 8px 0 !important;
+  font-style: normal !important;
+}
+
+.embed-loading-spinner {
+  width: 14px !important;
+  height: 14px !important;
+  border: 2px solid var(--editor-border, #e5e7eb) !important;
+  border-top-color: var(--accent-500, #3b82f6) !important;
+  border-radius: 50% !important;
+  animation: embed-spin 0.8s linear infinite !important;
+}
+
+@keyframes embed-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.embed-warning {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 4px 0 !important;
+  font-style: normal !important;
+}
+
+.embed-warning-icon {
+  font-size: 14px !important;
+  font-style: normal !important;
+}
+
+.embed-warning-message {
+  font-size: 13px !important;
+  color: var(--warning-600, #d97706) !important;
+  flex: 1 !important;
+  font-style: normal !important;
+}
+
+.embed-container--error .embed-warning-message {
+  color: var(--error-600, #dc2626) !important;
+}
+
+/* 暗色主题 */
+.dark .embed-container {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .embed-container:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .embed-container--error {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.dark .embed-container--warning {
+  background: rgba(245, 158, 11, 0.1) !important;
+}
+
+.dark .embed-content,
+.dark .embed-content *,
+.dark .embed-content p,
+.dark .embed-content span,
+.dark .embed-content li,
+.dark .embed-content td,
+.dark .embed-content th {
+  color: var(--editor-text, #e2e8f0) !important;
+}
+
+.dark .embed-title {
+  color: var(--editor-text, #e2e8f0) !important;
+}
+
+.dark .embed-content code {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.dark .embed-content pre {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark .embed-content blockquote,
+.dark .embed-content blockquote * {
+  color: var(--editor-text-secondary, #94a3b8) !important;
+}
+
+.dark .embed-content th {
+  background: rgba(255, 255, 255, 0.05) !important;
+}

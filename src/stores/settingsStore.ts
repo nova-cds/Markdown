@@ -3,17 +3,29 @@ import { persist } from 'zustand/middleware';
 
 type Theme = 'light' | 'dark' | 'system';
 
+export const EMBED_MAX_DEPTH_MIN = 1;
+export const EMBED_MAX_DEPTH_MAX = 5;
+export const EMBED_MAX_DEPTH_DEFAULT = 3;
+
+export const EMBED_MAX_COUNT_MIN = 1;
+export const EMBED_MAX_COUNT_MAX = 30;
+export const EMBED_MAX_COUNT_DEFAULT = 5;
+
 interface SettingsState {
   theme: Theme;
   imageDirectory: string;
   autoSave: boolean;
   autoSaveDelay: number;
+  embedMaxDepth: number;
+  embedMaxCount: number;
 
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
   setImageDirectory: (dir: string) => void;
   setAutoSave: (enabled: boolean) => void;
   setAutoSaveDelay: (delay: number) => void;
+  setEmbedMaxDepth: (depth: number) => void;
+  setEmbedMaxCount: (count: number) => void;
   getEffectiveTheme: () => 'light' | 'dark';
 }
 
@@ -24,6 +36,8 @@ export const useSettingsStore = create<SettingsState>()(
       imageDirectory: 'img',
       autoSave: true,
       autoSaveDelay: 1000,
+      embedMaxDepth: EMBED_MAX_DEPTH_DEFAULT,
+      embedMaxCount: EMBED_MAX_COUNT_DEFAULT,
 
       setTheme: (theme: Theme) => set({ theme }),
       toggleTheme: () => {
@@ -35,6 +49,14 @@ export const useSettingsStore = create<SettingsState>()(
       setImageDirectory: (dir: string) => set({ imageDirectory: dir }),
       setAutoSave: (enabled: boolean) => set({ autoSave: enabled }),
       setAutoSaveDelay: (delay: number) => set({ autoSaveDelay: delay }),
+      setEmbedMaxDepth: (depth: number) => {
+        const clampedDepth = Math.min(EMBED_MAX_DEPTH_MAX, Math.max(EMBED_MAX_DEPTH_MIN, depth));
+        set({ embedMaxDepth: clampedDepth });
+      },
+      setEmbedMaxCount: (count: number) => {
+        const clampedCount = Math.min(EMBED_MAX_COUNT_MAX, Math.max(EMBED_MAX_COUNT_MIN, count));
+        set({ embedMaxCount: clampedCount });
+      },
 
       getEffectiveTheme: () => {
         const { theme } = get();

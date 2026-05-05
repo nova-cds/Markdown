@@ -308,3 +308,32 @@
 .vditor .vditor-counter {
   display: none !important;
 }
+
+/* 预览模式链接样式 */
+.vditor .vditor-preview a,
+.vditor .vditor-sv__preview a,
+.vditor .vditor-ir__preview a {
+  color: var(--accent-500, #3b82f6) !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.vditor .vditor-preview a:hover,
+.vditor .vditor-sv__preview a:hover,
+.vditor .vditor-ir__preview a:hover {
+  text-decoration: underline !important;
+  color: var(--accent-600, #2563eb) !important;
+}
+
+/* 暗色主题预览模式链接 */
+.dark .vditor .vditor-preview a,
+.dark .vditor .vditor-sv__preview a,
+.dark .vditor .vditor-ir__preview a {
+  color: var(--accent-400, #60a5fa) !important;
+}
+
+.dark .vditor .vditor-preview a:hover,
+.dark .vditor .vditor-sv__preview a:hover,
+.dark .vditor .vditor-ir__preview a:hover {
+  color: var(--accent-300, #93c5fd) !important;
+}

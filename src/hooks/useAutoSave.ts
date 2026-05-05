@@ -115,18 +115,13 @@ export function useAutoSave(): void {
         const written = await writeToFileSystem(activeDocPath, doc.content);
         
         if (written) {
-          // 写入成功，清理localStorage中的缓存
           const savedDocs = JSON.parse(localStorage.getItem(STORAGE_KEY_DOCS) || '{}');
           delete savedDocs[activeDocPath];
           localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(savedDocs));
-          console.log(`[AutoSave] 已写入文件系统并清理缓存: ${activeDocPath}`);
         } else {
-          // 写入失败，保存到localStorage作为备份
           saveToStorage(activeDocPath, tabs, documents);
-          console.log(`[AutoSave] 写入失败，已保存到缓存: ${activeDocPath}`);
         }
       } else {
-        // 新建文档，保存到localStorage
         saveToStorage(activeDocPath, tabs, documents);
       }
       
@@ -218,6 +213,5 @@ export function useSaveToFile() {
     localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(savedDocs));
     
     saveDocument(activeDocPath);
-    console.log(`[Save] 已下载文件并清理缓存: ${fileName}`);
   }, [activeDocPath, saveDocument]);
 }

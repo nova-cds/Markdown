@@ -1,10 +1,17 @@
 import { create } from 'zustand';
 
+export type EditorMode = 'ir' | 'sv' | 'wysiwyg';
+export type PreviewMode = 'editor' | 'both' | 'preview';
+
 export interface DocumentState {
   content: string;
   isModified: boolean;
   isNewFile: boolean;
   lastSaved: number | null;
+  outlineVisible: boolean;
+  editorMode: EditorMode;
+  scrollPosition: number;
+  previewMode: PreviewMode;
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
@@ -66,6 +73,10 @@ interface EditorStateStore {
   renameDocument: (oldPath: string, newPath: string) => void;
   setWordCount: (count: number) => void;
   setMarkdownLength: (length: number) => void;
+  setOutlineVisible: (path: string, visible: boolean) => void;
+  setEditorMode: (path: string, mode: EditorMode) => void;
+  setScrollPosition: (path: string, position: number) => void;
+  setPreviewMode: (path: string, mode: PreviewMode) => void;
 }
 
 export const useEditorStore = create<EditorStateStore>((set, get) => ({
@@ -80,7 +91,6 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
     const { documents, tabs } = get();
     const newTabs = [...tabs];
 
-    // 如果文档不存在，创建新文档状态；如果存在且提供了内容，更新内容
     if (!documents[path]) {
       set({
         documents: {
@@ -90,11 +100,14 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
             isModified: isNew || false,
             isNewFile: isNew || false,
             lastSaved: isNew ? null : Date.now(),
+            outlineVisible: true,
+            editorMode: 'ir',
+            scrollPosition: 0,
+            previewMode: 'editor',
           },
         },
       });
     } else if (content !== undefined) {
-      // 文档已存在但提供了新内容，更新内容
       set({
         documents: {
           ...documents,
@@ -202,4 +215,68 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
 
   setWordCount: (count: number) => set({ wordCount: count }),
   setMarkdownLength: (length: number) => set({ markdownLength: length }),
+  
+  setOutlineVisible: (path: string, visible: boolean) => {
+    const { documents } = get();
+    const doc = documents[path];
+    if (doc) {
+      set({
+        documents: {
+          ...documents,
+          [path]: {
+            ...doc,
+            outlineVisible: visible,
+          },
+        },
+      });
+    }
+  },
+  
+  setEditorMode: (path: string, mode: EditorMode) => {
+    const { documents } = get();
+    const doc = documents[path];
+    if (doc) {
+      set({
+        documents: {
+          ...documents,
+          [path]: {
+            ...doc,
+            editorMode: mode,
+          },
+        },
+      });
+    }
+  },
+  
+  setScrollPosition: (path: string, position: number) => {
+    const { documents } = get();
+    const doc = documents[path];
+    if (doc) {
+      set({
+        documents: {
+          ...documents,
+          [path]: {
+            ...doc,
+            scrollPosition: position,
+          },
+        },
+      });
+    }
+  },
+  
+  setPreviewMode: (path: string, mode: PreviewMode) => {
+    const { documents } = get();
+    const doc = documents[path];
+    if (doc) {
+      set({
+        documents: {
+          ...documents,
+          [path]: {
+            ...doc,
+            previewMode: mode,
+          },
+        },
+      });
+    }
+  },
 }));

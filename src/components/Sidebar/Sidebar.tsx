@@ -229,7 +229,6 @@ export const Sidebar: React.FC = () => {
           };
           
           setFileTree(updateNodeChildren(fileTree, path, children));
-          console.log('[toggleDir] 子目录加载完成:', path, '子项数量:', children.length);
         } catch (err) {
           console.error('[toggleDir] 加载子目录失败:', err);
         }
@@ -290,24 +289,19 @@ export const Sidebar: React.FC = () => {
 
     try {
       if (isTauriCached()) {
-        // Tauri 环境 - 使用绝对路径
         const absoluteParentPath = toAbsolutePath(parentPath);
         const filePath = `${absoluteParentPath}\\${finalName}`;
-        console.log('[NewFile] Tauri 环境创建文件:', filePath);
         
         const { writeTextFile } = await import('@tauri-apps/plugin-fs');
         await writeTextFile(filePath, defaultContent);
         
-        // 刷新文件树
         const fullRoot = getFullRootPath();
         if (fullRoot) {
           const tree = await readDirectoryTauri(fullRoot);
           setFileTree(tree);
         }
         
-        // 打开新文件
         openDocument(`file://${filePath}`, defaultContent, false);
-        console.log(`[NewFile] 创建文件成功: ${finalName}`);
       } else {
         // 浏览器环境
         const dirHandle = dirHandles.get(parentPath) || rootHandle;
@@ -331,8 +325,6 @@ export const Sidebar: React.FC = () => {
         const file = await fileHandle.getFile();
         const content = await file.text();
         openDocument(docPath, content, false);
-
-        console.log(`[NewFile] 创建文件成功: ${finalName}`);
       }
     } catch (err) {
       console.error('[NewFile] 创建文件失败:', err);
@@ -371,22 +363,17 @@ export const Sidebar: React.FC = () => {
 
     try {
       if (isTauriCached()) {
-        // Tauri 环境 - 使用绝对路径
         const absoluteParentPath = toAbsolutePath(parentPath);
         const dirPath = `${absoluteParentPath}\\${dirName}`;
-        console.log('[NewDir] Tauri 环境创建目录:', dirPath);
         
         const { mkdir } = await import('@tauri-apps/plugin-fs');
         await mkdir(dirPath);
         
-        // 刷新文件树
         const fullRoot = getFullRootPath();
         if (fullRoot) {
           const tree = await readDirectoryTauri(fullRoot);
           setFileTree(tree);
         }
-        
-        console.log(`[NewDir] 创建目录成功: ${dirName}`);
       } else {
         // 浏览器环境
         const dirHandle = dirHandles.get(parentPath) || rootHandle;
@@ -401,8 +388,6 @@ export const Sidebar: React.FC = () => {
 
         const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
         setFileTree(tree);
-
-        console.log(`[NewDir] 创建目录成功: ${dirName}`);
       }
 
       setExpandedDirs(prev => {
@@ -438,7 +423,6 @@ export const Sidebar: React.FC = () => {
       if (isNewFile) {
         const newDocPath = `file://${finalName}`;
         renameDocument(oldDocPath, newDocPath);
-        console.log(`[Rename] 重命名新建文档: ${oldName} -> ${finalName}`);
       } else {
         const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
         const parentPath = path.substring(0, lastSlash);
@@ -448,18 +432,14 @@ export const Sidebar: React.FC = () => {
 
         try {
           if (isTauriCached()) {
-            // Tauri 环境
             const { rename } = await import('@tauri-apps/plugin-fs');
             await rename(oldEntryPath, newEntryPath);
 
-            // 刷新文件树
             const fullRoot = getFullRootPath();
             if (fullRoot) {
               const tree = await readDirectoryTauri(fullRoot);
               setFileTree(tree);
             }
-            
-            console.log(`[Rename] 重命名成功: ${oldName} -> ${finalName}`);
           } else {
             // 浏览器环境
             const dirHandle = dirHandles.get(parentPath) || rootHandle;
@@ -503,8 +483,6 @@ export const Sidebar: React.FC = () => {
               const tree = await readDirectoryRecursive(rootHandle, rootPath);
               setFileTree(tree);
             }
-            
-            console.log(`[Rename] 重命名成功: ${oldName} -> ${finalName}`);
           }
         } catch (err) {
           console.error('[Rename] 重命名失败:', err);
@@ -558,11 +536,8 @@ export const Sidebar: React.FC = () => {
     const { path, name, isDir } = deleteState;
 
     try {
-      // 移动到回收站
       const absolutePath = toAbsolutePath(path);
-      console.log('[Delete] 删除:', absolutePath);
       
-      // 使用系统命令移动到回收站
       const { Command } = await import('@tauri-apps/plugin-shell');
       
       // 检测操作系统
@@ -595,14 +570,11 @@ export const Sidebar: React.FC = () => {
         }
       }
       
-      // 刷新文件树
       const fullRoot = getFullRootPath();
       if (fullRoot) {
         const tree = await readDirectoryTauri(fullRoot);
         setFileTree(tree);
       }
-      
-      console.log(`[Delete] 已移到回收站: ${name}`);
     } catch (err) {
       console.error('[Delete] 删除失败:', err);
       alert('删除失败: ' + (err instanceof Error ? err.message : String(err)));

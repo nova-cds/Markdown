@@ -1,10 +1,13 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import './vditor-styles.css';
-import { useEditorStore, useFileStore, useSettingsStore } from '../../stores';
+import '../../styles/embed.css';
+import { useEditorStore, useFileStore, useSettingsStore, EditorMode, PreviewMode } from '../../stores';
 import { useSaveToFile } from '../../hooks/useAutoSave';
 import { isTauriCached, waitForTauri } from '../../utils/platform';
+import { isLocalMdFile, resolveDocPath, readMdFileContent, getFileDisplayName, normalizePath, getFileName } from '../../utils/linkUtils';
+import { shouldRenderEmbed, processEmbedsInMarkdown, createEmbedContainer, createEmbedWarning, EmbedContext } from '../../utils/embedUtils';
 
 interface VditorEditorProps {
   path: string;
@@ -151,7 +154,6 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
       return blobUrl;
     }
   } catch (err) {
-    console.warn('[ImageLoader] 无法加载本地图片:', imageSrc, err);
     return null;
   }
 }
@@ -171,7 +173,6 @@ function handleLocalImage(img: HTMLImageElement, docPath: string) {
   loadLocalImage(src, docPath).then((blobUrl) => {
     if (blobUrl) {
       img.src = blobUrl;
-      console.log('[ImageLoader] 图片已加载:', src);
     }
     img.dataset.loading = 'false';
   });
@@ -268,11 +269,75 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
   const vditorRef = useRef<Vditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const updateDocument = useEditorStore((state) => state.updateDocument);
+  const openDocument = useEditorStore((state) => state.openDocument);
+  const setOutlineVisible = useEditorStore((state) => state.setOutlineVisible);
+  const setEditorMode = useEditorStore((state) => state.setEditorMode);
+  const setScrollPosition = useEditorStore((state) => state.setScrollPosition);
+  const setPreviewMode = useEditorStore((state) => state.setPreviewMode);
+  const docState = useEditorStore((state) => state.documents[path]);
   const saveToFile = useSaveToFile();
+  const embedMaxDepth = useSettingsStore((state) => state.embedMaxDepth);
+  const embedMaxCount = useSettingsStore((state) => state.embedMaxCount);
   const isInitializedRef = useRef(false);
   const currentPathRef = useRef<string>('');
   const contentRef = useRef<string>('');
   const [initKey, setInitKey] = useState(0);
+  const processedEmbedsRef = useRef<Set<string>>(new Set());
+  
+  const pathRef = useRef(path);
+  const openDocumentRef = useRef(openDocument);
+  const setOutlineVisibleRef = useRef(setOutlineVisible);
+  const setEditorModeRef = useRef(setEditorMode);
+  const setScrollPositionRef = useRef(setScrollPosition);
+  const setPreviewModeRef = useRef(setPreviewMode);
+  
+  useEffect(() => {
+    pathRef.current = path;
+  }, [path]);
+  
+  useEffect(() => {
+    openDocumentRef.current = openDocument;
+  }, [openDocument]);
+  
+  useEffect(() => {
+    setOutlineVisibleRef.current = setOutlineVisible;
+  }, [setOutlineVisible]);
+  
+  useEffect(() => {
+    setEditorModeRef.current = setEditorMode;
+  }, [setEditorMode]);
+  
+  useEffect(() => {
+    setScrollPositionRef.current = setScrollPosition;
+  }, [setScrollPosition]);
+  
+  useEffect(() => {
+    setPreviewModeRef.current = setPreviewMode;
+  }, [setPreviewMode]);
+
+  const handleLocalMdLinkClick = useCallback(async (href: string): Promise<boolean> => {
+    if (!href || !isLocalMdFile(href)) {
+      return false;
+    }
+    
+    const resolvedPath = resolveDocPath(href, pathRef.current);
+    const docPath = `file://${resolvedPath}`;
+    
+    try {
+      const result = await readMdFileContent(resolvedPath);
+      
+      if (result.content !== undefined) {
+        openDocumentRef.current(docPath, result.content, false);
+        return true;
+      } else {
+        alert(`无法打开文档: ${result.error || '文件不存在'}`);
+      }
+    } catch (err) {
+      alert(`打开文档失败: ${err}`);
+    }
+    
+    return false;
+  }, []);
 
   // 监听内容延迟加载（只对未初始化的文档）
   useEffect(() => {
@@ -331,15 +396,22 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
     contentRef.current = doc.content || '';
     isInitializedRef.current = false;
 
+    // 获取保存的状态 - 从当前store获取最新状态
+    const currentDocState = useEditorStore.getState().documents[path];
+    const savedOutlineVisible = currentDocState?.outlineVisible ?? true;
+    const savedEditorMode = currentDocState?.editorMode ?? 'ir';
+    const savedScrollPosition = currentDocState?.scrollPosition ?? 0;
+    const savedPreviewMode = currentDocState?.previewMode ?? 'editor';
+    
     const vditor = new Vditor(containerRef.current, {
-      mode: 'ir',
+      mode: savedEditorMode,
       height: '100%',
       theme: document.documentElement.classList.contains('dark') ? 'dark' : 'classic',
       toolbarConfig: {
         pin: true,
       },
       outline: {
-        enable: true,
+        enable: savedOutlineVisible,
         position: 'right',
       },
       cdn: 'https://unpkg.com/vditor@3.11.2',
@@ -387,12 +459,12 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         '|',
         'outline',
         'edit-mode',
+        'preview',
         {
           name: 'more',
           toolbar: [
             'export',
             'fullscreen',
-            'preview',
             'devtools',
             'info',
             'help',
@@ -520,7 +592,6 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         setTimeout(() => {
           const md = vditorRef.current?.getValue() || '';
           const plainText = countPlainText(md);
-          console.log('[Counter] md:', JSON.stringify(md), 'length:', md.length, 'plainText:', plainText);
           const store = useEditorStore.getState();
           store.setMarkdownLength(md.length);
           store.setWordCount(plainText);
@@ -564,12 +635,73 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }
         }
         
+        // 空格键 - 检测中文"》"自动转换为引用
+        if (event.key === ' ' && !event.ctrlKey && !event.metaKey) {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const container = range.startContainer;
+            
+            if (container.nodeType === Node.TEXT_NODE) {
+              const text = container.textContent || '';
+              const offset = range.startOffset;
+              
+              // 检查光标前是否有连续的"》"
+              let bracketCount = 0;
+              let checkOffset = offset - 1;
+              while (checkOffset >= 0 && text[checkOffset] === '》') {
+                bracketCount++;
+                checkOffset--;
+              }
+              
+              if (bracketCount === 0) return false;
+              
+              // 获取当前行光标前的所有文本（不包括》）
+              let lineTextBeforeBrackets = text.substring(0, checkOffset + 1);
+              
+              // 向前查找兄弟节点，获取完整行文本
+              let currentNode = container.previousSibling;
+              while (currentNode) {
+                if (currentNode.nodeType === Node.TEXT_NODE) {
+                  lineTextBeforeBrackets = currentNode.textContent + lineTextBeforeBrackets;
+                } else if (currentNode instanceof HTMLElement) {
+                  lineTextBeforeBrackets = currentNode.textContent + lineTextBeforeBrackets;
+                }
+                currentNode = currentNode.previousSibling;
+              }
+              
+              // 检查从行首到》之间是否只有空白（或为空）
+              if (/^\s*$/.test(lineTextBeforeBrackets)) {
+                event.preventDefault();
+                
+                // 替换所有"》"为"> "
+                const newText = text.substring(0, checkOffset + 1) + '> '.repeat(bracketCount) + text.substring(offset);
+                container.textContent = newText;
+                
+                // 光标移到最后一个"> "后面
+                range.setStart(container, checkOffset + 1 + 2 * bracketCount);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                
+                // 触发input事件让Vditor重新渲染
+                const vditorReset = containerRef.current?.querySelector('.vditor-reset');
+                vditorReset?.dispatchEvent(new InputEvent('input', { bubbles: true }));
+                
+                return true;
+              }
+            }
+          }
+        }
+        
         return false;
       },
       // 编辑器准备就绪回调
       after: () => {
         vditorRef.current = vditor;
         isInitializedRef.current = true;
+        
+        const vditorInternal = (vditor as any).vditor;
         
         // 设置初始字数统计
         const initialValue = vditor.getValue();
@@ -593,6 +725,438 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
+        
+        // 恢复预览模式
+        const currentVditor = vditor;
+        setTimeout(() => {
+          if (vditorRef.current !== currentVditor) {
+            return;
+          }
+          try {
+            if (savedPreviewMode === 'both') {
+              vditorRef.current?.setPreviewMode('both');
+            } else if (savedPreviewMode === 'preview') {
+              const previewBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="preview"]') as HTMLElement;
+              if (previewBtn) {
+                previewBtn.click();
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+        }, 300);
+        
+        if (savedScrollPosition > 0) {
+          setTimeout(() => {
+            // 尝试多种选择器找到滚动容器
+            let vditorReset: HTMLElement | null = null;
+            const selectors = [
+              '.vditor-ir .vditor-reset',
+              '.vditor-sv .vditor-reset', 
+              '.vditor-wysiwyg .vditor-reset',
+              '.vditor-reset'
+            ];
+            for (const selector of selectors) {
+              const el = containerRef.current?.querySelector(selector) as HTMLElement;
+              if (el && el.scrollHeight > el.clientHeight) {
+                vditorReset = el;
+                break;
+              }
+            }
+            if (vditorReset) {
+              vditorReset.scrollTop = savedScrollPosition;
+            }
+          }, 200);
+        }
+        
+        // 监听滚动位置变化
+        let scrollPositionTimeout: ReturnType<typeof setTimeout>;
+        const handleScrollPosition = () => {
+          clearTimeout(scrollPositionTimeout);
+          scrollPositionTimeout = setTimeout(() => {
+            // 查找当前可见的滚动容器
+            let currentReset: HTMLElement | null = null;
+            const selectors = [
+              '.vditor-ir .vditor-reset',
+              '.vditor-sv .vditor-reset',
+              '.vditor-wysiwyg .vditor-reset',
+              '.vditor-reset'
+            ];
+            for (const selector of selectors) {
+              const el = containerRef.current?.querySelector(selector) as HTMLElement;
+              if (el && el.offsetParent !== null) {
+                currentReset = el;
+                break;
+              }
+            }
+            if (currentReset) {
+              setScrollPositionRef.current(pathRef.current, currentReset.scrollTop);
+            }
+          }, 200);
+        };
+        
+        // 给所有可能的滚动容器添加监听
+        const resetElements = containerRef.current?.querySelectorAll('.vditor-reset');
+        resetElements?.forEach(el => {
+          el.addEventListener('scroll', handleScrollPosition);
+        });
+        (vditorRef.current as any)._scrollPositionHandler = handleScrollPosition;
+        
+        // 监听大纲显示/隐藏
+        const outlineElement = containerRef.current?.querySelector('.vditor-outline') as HTMLElement;
+        if (outlineElement) {
+          const outlineObserver = new MutationObserver(() => {
+            const isVisible = outlineElement.style.display !== 'none' && outlineElement.offsetParent !== null;
+            setOutlineVisibleRef.current(pathRef.current, isVisible);
+          });
+          outlineObserver.observe(outlineElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          (vditorRef.current as any)._outlineObserver = outlineObserver;
+        }
+        
+        // 监听编辑模式切换 - 监听三个编辑区域的display变化
+        const checkEditorMode = () => {
+          const irElement = containerRef.current?.querySelector('.vditor-ir') as HTMLElement | null;
+          const svElement = containerRef.current?.querySelector('.vditor-sv') as HTMLElement | null;
+          const wysiwygElement = containerRef.current?.querySelector('.vditor-wysiwyg') as HTMLElement | null;
+          
+          let currentMode: EditorMode = 'ir';
+          if (svElement && svElement.style.display !== 'none') {
+            currentMode = 'sv';
+          } else if (wysiwygElement && wysiwygElement.style.display !== 'none') {
+            currentMode = 'wysiwyg';
+          } else if (irElement && irElement.style.display !== 'none') {
+            currentMode = 'ir';
+          }
+          
+          setEditorModeRef.current(pathRef.current, currentMode);
+        };
+        
+        // 监听三个编辑区域的style变化
+        const irElement = containerRef.current?.querySelector('.vditor-ir');
+        const svElement = containerRef.current?.querySelector('.vditor-sv');
+        const wysiwygElement = containerRef.current?.querySelector('.vditor-wysiwyg');
+        
+        const modeObserver = new MutationObserver(() => {
+          checkEditorMode();
+        });
+        
+        if (irElement) {
+          modeObserver.observe(irElement, { attributes: true, attributeFilter: ['style', 'class'] });
+        }
+        if (svElement) {
+          modeObserver.observe(svElement, { attributes: true, attributeFilter: ['style', 'class'] });
+        }
+        if (wysiwygElement) {
+          modeObserver.observe(wysiwygElement, { attributes: true, attributeFilter: ['style', 'class'] });
+        }
+        (vditorRef.current as any)._modeObserver = modeObserver;
+        
+        // 监听预览模式变化
+        const previewElement = containerRef.current?.querySelector('.vditor-preview') as HTMLElement;
+        const irElementForPreview = containerRef.current?.querySelector('.vditor-ir') as HTMLElement;
+        const svElementForPreview = containerRef.current?.querySelector('.vditor-sv') as HTMLElement;
+        const wysiwygElementForPreview = containerRef.current?.querySelector('.vditor-wysiwyg') as HTMLElement;
+        
+        if (previewElement) {
+          const previewObserver = new MutationObserver(() => {
+            const vditorInternal = (vditorRef.current as any)?.vditor;
+            const internalPreviewMode = vditorInternal?.currentPreviewMode;
+            
+            // 检测预览区域和编辑器区域的显示状态
+            const previewVisible = previewElement.style.display !== 'none' && previewElement.offsetParent !== null;
+            
+            // 检查编辑器区域是否可见
+            const irVisible = irElementForPreview ? (irElementForPreview.style.display !== 'none' && irElementForPreview.offsetParent !== null) : false;
+            const svVisible = svElementForPreview ? (svElementForPreview.style.display !== 'none' && svElementForPreview.offsetParent !== null) : false;
+            const wysiwygVisible = wysiwygElementForPreview ? (wysiwygElementForPreview.style.display !== 'none' && wysiwygElementForPreview.offsetParent !== null) : false;
+            const editorVisible = irVisible || svVisible || wysiwygVisible;
+            
+            // 根据显示状态判断模式
+            let currentPreviewMode: PreviewMode = 'editor';
+            if (previewVisible && editorVisible) {
+              currentPreviewMode = 'both';
+            } else if (previewVisible && !editorVisible) {
+              currentPreviewMode = 'preview';
+            }
+            
+            setPreviewModeRef.current(pathRef.current, currentPreviewMode);
+          });
+          previewObserver.observe(previewElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          if (irElementForPreview) {
+            previewObserver.observe(irElementForPreview, { attributes: true, attributeFilter: ['style', 'class'] });
+          }
+          if (svElementForPreview) {
+            previewObserver.observe(svElementForPreview, { attributes: true, attributeFilter: ['style', 'class'] });
+          }
+          if (wysiwygElementForPreview) {
+            previewObserver.observe(wysiwygElementForPreview, { attributes: true, attributeFilter: ['style', 'class'] });
+          }
+          (vditorRef.current as any)._previewModeObserver = previewObserver;
+        }
+        
+        // 链接点击拦截处理 - 绑定到vditor-reset元素
+        const handleLinkClick = (e: MouseEvent) => {
+          const target = e.target as HTMLElement;
+          
+          let link = target.closest('a');
+          let href: string | null = null;
+          let linkText: string | null = null;
+          
+          if (link) {
+            href = link.getAttribute('href');
+            linkText = link.textContent;
+          } else {
+            const irLink = target.closest('.vditor-ir__link');
+            if (irLink) {
+              linkText = irLink.textContent;
+              
+              let parent = irLink.parentElement;
+              let found = false;
+              
+              for (let i = 0; i < 5 && parent && !found; i++) {
+                const urlElement = parent.querySelector('.vditor-ir__url') as HTMLElement;
+                if (urlElement) {
+                  href = urlElement.textContent;
+                  found = true;
+                  break;
+                }
+                
+                const bracketElement = parent.querySelector('.vditor-ir__bracket');
+                if (bracketElement) {
+                  const nextSibling = bracketElement.nextElementSibling;
+                  if (nextSibling && nextSibling.classList.contains('vditor-ir__url')) {
+                    href = nextSibling.textContent;
+                    found = true;
+                    break;
+                  }
+                }
+                
+                parent = parent.parentElement;
+              }
+              
+              if (!href && linkText) {
+                const content = vditor.getValue();
+                const linkRegex = new RegExp(`\\[${linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\(([^)]+)\\)`, 'g');
+                const matches = [...content.matchAll(linkRegex)];
+                if (matches.length > 0) {
+                  href = matches[0][1];
+                }
+              }
+            }
+          }
+          
+          if (!href) {
+            return;
+          }
+          
+          href = href.replace(/[()]/g, '').trim();
+          
+          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+            return;
+          }
+          
+          if (href.startsWith('#')) {
+            return;
+          }
+          
+          if (!isLocalMdFile(href)) {
+            return;
+          }
+          
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          
+          const embedContainer = target.closest('.embed-container');
+          if (embedContainer) {
+            const embedPath = embedContainer.getAttribute('data-embed-path');
+            if (embedPath && isLocalMdFile(embedPath)) {
+              handleLocalMdLinkClick(embedPath);
+              return;
+            }
+          }
+          
+          handleLocalMdLinkClick(href);
+        };
+        
+        const vditorResetForLink = containerRef.current?.querySelector('.vditor-ir .vditor-reset');
+        const vditorPreviewEl = containerRef.current?.querySelector('.vditor-preview');
+        
+        if (vditorResetForLink) {
+          vditorResetForLink.addEventListener('click', handleLinkClick as unknown as EventListener, true);
+        }
+        if (vditorPreviewEl) {
+          vditorPreviewEl.addEventListener('click', handleLinkClick as unknown as EventListener, true);
+        }
+        
+        (vditorRef.current as any)._linkClickHandler = handleLinkClick;
+        (vditorRef.current as any)._linkClickReset = vditorResetForLink;
+        (vditorRef.current as any)._linkClickPreview = vditorPreviewEl;
+        
+        // 处理预览模式的嵌入内容
+        const currentPath = path;
+        const maxEmbedCount = embedMaxCount;
+        let isProcessing = false;
+        let processedInCurrentBatch = 0; // 当前批次已处理的数量
+        
+        const processEmbedPlaceholders = async () => {
+          if (isProcessing) return;
+          isProcessing = true;
+          processedInCurrentBatch = 0;
+          
+          try {
+            const previewElements = containerRef.current?.querySelectorAll('.vditor-preview, .vditor-sv__preview, .vditor-ir__preview');
+            if (!previewElements || previewElements.length === 0) {
+              return;
+            }
+            
+            const mdContent = vditor.getValue();
+            const mdEmbedLinks: Array<{ url: string; displayText: string }> = [];
+            
+            // 使用新语法的正则：[[xxx]](doc.md) 或 [[](doc.md)
+            const linkRegex = /\[\[([^\]]*?)\]\]\(([^)]+)\)/gi;
+            let match;
+            while ((match = linkRegex.exec(mdContent)) !== null) {
+              const displayText = match[1]?.trim() || '';
+              const url = match[2];
+              if (isLocalMdFile(url)) {
+                mdEmbedLinks.push({ url, displayText });
+              }
+            }
+            
+            // 更新已存在的嵌入容器的标题
+            for (const previewEl of previewElements) {
+              if ((previewEl as HTMLElement).style.display === 'none') continue;
+              
+              const embedContainers = previewEl.querySelectorAll('.embed-container');
+              
+              for (const container of embedContainers) {
+                const embedPath = container.getAttribute('data-embed-path');
+                if (!embedPath) continue;
+                
+                const linkInfo = mdEmbedLinks.find(l => {
+                  const resolved = resolveDocPath(l.url, currentPath).replace(/\\/g, '/');
+                  return resolved === embedPath.replace(/\\/g, '/') || l.url === embedPath;
+                });
+                
+                if (linkInfo) {
+                  const titleEl = container.querySelector('.embed-title');
+                  if (titleEl) {
+                    const newTitle = linkInfo.displayText || getFileDisplayName(embedPath);
+                    if (titleEl.textContent !== newTitle) {
+                      titleEl.textContent = newTitle;
+                    }
+                  }
+                }
+              }
+            }
+            
+            // 收集所有待处理的链接，并立即标记
+            const pendingLinks: Array<{ link: HTMLAnchorElement; linkInfo: { url: string; displayText: string } }> = [];
+            
+            for (const previewEl of previewElements) {
+              if ((previewEl as HTMLElement).style.display === 'none') continue;
+              
+              const allLinks = Array.from(previewEl.querySelectorAll('a'));
+              
+              for (const link of allLinks) {
+                if (!link.parentElement) continue;
+                if ((link as any)._embedProcessed) continue;
+                
+                const href = link.getAttribute('href') || '';
+                const linkText = link.textContent?.trim() || '';
+                
+                // 检查链接文本是否是 [xxx] 格式（嵌入语法）
+                if (!linkText.startsWith('[') || !linkText.endsWith(']')) continue;
+                
+                const linkInfo = mdEmbedLinks.find(l => l.url === href);
+                if (!linkInfo) continue;
+                
+                // 立即标记为已处理
+                (link as any)._embedProcessed = true;
+                pendingLinks.push({ link, linkInfo });
+              }
+            }
+            
+            // 同步顺序处理每个链接
+            for (const { link, linkInfo } of pendingLinks) {
+              if (!link.parentElement) continue;
+              
+              // 检查数量限制
+              if (processedInCurrentBatch >= maxEmbedCount) {
+                link.outerHTML = createEmbedWarning(`嵌入文档数量超过限制 (最大${maxEmbedCount}个)`);
+                continue;
+              }
+              
+              const href = link.getAttribute('href') || '';
+              const resolvedPath = resolveDocPath(href, currentPath);
+              const normalizedResolvedPath = resolvedPath.replace(/\\/g, '/');
+              const currentDocFullPath = currentPath.replace(/^file:\/\//, '').replace(/\\/g, '/');
+              
+              if (normalizedResolvedPath === currentDocFullPath || 
+                  currentDocFullPath.endsWith('/' + normalizedResolvedPath)) {
+                link.outerHTML = createEmbedWarning(`检测到循环引用: 不能嵌入自身`, resolvedPath);
+                continue;
+              }
+              
+              // 立即增加计数
+              processedInCurrentBatch++;
+              
+              const result = await readMdFileContent(resolvedPath);
+              
+              if (!link.parentElement) {
+                continue;
+              }
+              
+              if (result.error) {
+                link.outerHTML = createEmbedWarning(result.error, resolvedPath);
+              } else {
+                const tempDiv = document.createElement('div');
+                tempDiv.className = 'embed-content vditor-reset';
+                
+                await new Promise<void>((resolve) => {
+                  Vditor.preview(tempDiv, result.content || '', {
+                    cdn: 'https://unpkg.com/vditor@3.11.2',
+                    mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                    markdown: {
+                      codeBlockPreview: true,
+                      mathBlockPreview: true,
+                      toc: false,
+                      mark: true,
+                    },
+                    after: () => resolve(),
+                  });
+                  setTimeout(resolve, 500);
+                });
+                
+                if (!link.parentElement) {
+                  continue;
+                }
+                
+                const embedHtml = createEmbedContainer(resolvedPath, tempDiv.innerHTML, linkInfo.displayText);
+                link.outerHTML = embedHtml;
+              }
+            }
+          } finally {
+            isProcessing = false;
+          }
+        };
+        
+        setTimeout(() => {
+          processEmbedPlaceholders();
+        }, 300);
+        
+        const previewObserver = new MutationObserver(() => {
+          processEmbedPlaceholders();
+        });
+        
+        if (containerRef.current) {
+          previewObserver.observe(containerRef.current, {
+            childList: true,
+            subtree: true,
+          });
+        }
+        (vditorRef.current as any)._previewObserver = previewObserver;
         
         // TOC 目录点击跳转处理（使用事件委托，绑定到容器）
         const handleTocClick = (e: MouseEvent) => {
@@ -874,15 +1438,34 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
 
     return () => {
       if (vditorRef.current) {
-        console.log('[VditorEditor] 组件卸载，销毁编辑器');
         const imageObserver = (vditorRef.current as any)._imageObserver;
         const handleKeyDown = (vditorRef.current as any)._handleKeyDown;
         const vditorReset = (vditorRef.current as any)._vditorReset;
         const tabKeydownHandler = (vditorRef.current as any)._tabKeydownHandler;
         const tocClickHandler = (vditorRef.current as any)._tocClickHandler;
         const tocClickTarget = (vditorRef.current as any)._tocClickTarget;
+        const linkClickHandler = (vditorRef.current as any)._linkClickHandler;
+        const linkClickReset = (vditorRef.current as any)._linkClickReset;
+        const linkClickPreview = (vditorRef.current as any)._linkClickPreview;
+        const previewObserver = (vditorRef.current as any)._previewObserver;
+        const outlineObserver = (vditorRef.current as any)._outlineObserver;
+        const modeObserver = (vditorRef.current as any)._modeObserver;
+        const previewModeObserver = (vditorRef.current as any)._previewModeObserver;
         
         if (imageObserver) imageObserver.disconnect();
+        if (previewObserver) previewObserver.disconnect();
+        if (outlineObserver) outlineObserver.disconnect();
+        if (modeObserver) modeObserver.disconnect();
+        if (previewModeObserver) previewModeObserver.disconnect();
+        
+        // 移除滚动监听
+        const scrollPositionHandler = (vditorRef.current as any)._scrollPositionHandler;
+        if (scrollPositionHandler) {
+          const resetEls = containerRef.current?.querySelectorAll('.vditor-reset');
+          resetEls?.forEach(el => {
+            el.removeEventListener('scroll', scrollPositionHandler);
+          });
+        }
         if (handleKeyDown && vditorReset) {
           vditorReset.removeEventListener('keydown', handleKeyDown);
         }
@@ -892,6 +1475,15 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         if (tocClickHandler && tocClickTarget) {
           tocClickTarget.removeEventListener('click', tocClickHandler, true);
         }
+        if (linkClickHandler) {
+          if (linkClickReset) {
+            linkClickReset.removeEventListener('click', linkClickHandler as EventListener, true);
+          }
+          if (linkClickPreview) {
+            linkClickPreview.removeEventListener('click', linkClickHandler as EventListener, true);
+          }
+        }
+        processedEmbedsRef.current.clear();
         vditorRef.current.destroy();
         vditorRef.current = null;
         isInitializedRef.current = false;
