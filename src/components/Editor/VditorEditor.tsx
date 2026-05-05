@@ -346,7 +346,6 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       cache: {
         enable: false,
       },
-      // 字数统计配置
       counter: {
         enable: true,
         type: 'text',
@@ -461,9 +460,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       },
       // Tab行为配置：由自定义 handler 处理，这里禁用
       tab: '',
-      // 初始值
       value: contentRef.current,
-      // 内容变化回调
       input: (value: string) => {
         updateDocument(path, value);
       },
@@ -529,26 +526,22 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
         
-        // TOC 目录点击跳转处理
+        // TOC 目录点击跳转处理（使用事件委托）
         const handleTocClick = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
           
-          // 查找 TOC 容器内的点击目标
           const tocContainer = target.closest('.vditor-toc');
           if (!tocContainer) return;
           
-          // 查找最近的列表项或链接
           const tocItem = target.closest('li');
           if (!tocItem) return;
           
-          // 获取列表项内的链接或 span
           const link = tocItem.querySelector('a, span[data-target-id]') as HTMLElement;
           if (!link) return;
           
           e.preventDefault();
           e.stopPropagation();
           
-          // 获取目标 ID
           let headingId: string | null = null;
           if (link.tagName === 'A') {
             const href = link.getAttribute('href');
@@ -560,20 +553,18 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }
           
           if (headingId) {
-            // 在 IR 模式下，标题可能没有 id，尝试通过文本内容查找
             const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
             if (!vditorReset) return;
             
-            // 先尝试通过 id 查找
             let heading = vditorReset.querySelector(`[id="${headingId}"]`) as HTMLElement;
             
-            // 如果找不到，尝试通过标题文本查找
             if (!heading) {
               const headingText = decodeURIComponent(headingId);
               const headings = vditorReset.querySelectorAll('h1, h2, h3, h4, h5, h6');
               for (const h of headings) {
                 if (h.textContent?.trim() === headingText || 
-                    h.getAttribute('data-id') === headingId) {
+                    h.getAttribute('data-id') === headingId ||
+                    h.getAttribute('data-node-id') === headingId) {
                   heading = h as HTMLElement;
                   break;
                 }
@@ -581,13 +572,20 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
             }
             
             if (heading) {
-              vditorReset.scrollTop = heading.offsetTop - 20;
+              vditorReset.scrollTo({
+                top: heading.offsetTop - 20,
+                behavior: 'smooth'
+              });
             }
           }
         };
         
-        containerRef.current?.addEventListener('click', handleTocClick);
-        (vditorRef.current as any)._tocClickHandler = handleTocClick;
+        const vditorResetEl = containerRef.current?.querySelector('.vditor-ir .vditor-reset');
+        if (vditorResetEl) {
+          vditorResetEl.addEventListener('click', handleTocClick as EventListener);
+          (vditorRef.current as any)._tocClickHandler = handleTocClick;
+          (vditorRef.current as any)._tocClickTarget = vditorResetEl;
+        }
         
         // 渲染 Mermaid 图表
         const renderMermaid = () => {
@@ -807,12 +805,12 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
     return () => {
       if (vditorRef.current) {
         console.log('[VditorEditor] 组件卸载，销毁编辑器');
-        // 断开观察器
         const imageObserver = (vditorRef.current as any)._imageObserver;
         const handleKeyDown = (vditorRef.current as any)._handleKeyDown;
         const vditorReset = (vditorRef.current as any)._vditorReset;
         const tabKeydownHandler = (vditorRef.current as any)._tabKeydownHandler;
         const tocClickHandler = (vditorRef.current as any)._tocClickHandler;
+        const tocClickTarget = (vditorRef.current as any)._tocClickTarget;
         
         if (imageObserver) imageObserver.disconnect();
         if (handleKeyDown && vditorReset) {
@@ -821,8 +819,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         if (tabKeydownHandler && containerRef.current) {
           containerRef.current.removeEventListener('keydown', tabKeydownHandler, true);
         }
-        if (tocClickHandler && containerRef.current) {
-          containerRef.current.removeEventListener('click', tocClickHandler);
+        if (tocClickHandler && tocClickTarget) {
+          tocClickTarget.removeEventListener('click', tocClickHandler);
         }
         vditorRef.current.destroy();
         vditorRef.current = null;

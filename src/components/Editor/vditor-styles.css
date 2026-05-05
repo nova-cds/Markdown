@@ -303,3 +303,8 @@
 .dark .vditor .vditor-content .vditor-reset .vditor-toc {
   background-color: var(--editor-code-bg, #1e293b) !important;
 }
+
+/* 隐藏工具栏字数统计显示（已在状态栏显示） */
+.vditor .vditor-counter {
+  display: none !important;
+}

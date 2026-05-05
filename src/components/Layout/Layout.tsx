@@ -132,7 +132,15 @@ const StatusBar: React.FC = () => {
         </span>
       </div>
       <div className="flex items-center gap-4 text-[var(--statusbar-text)]">
-        <span className="opacity-70">{wordCount} 字</span>
+        <span 
+          className="opacity-70 cursor-help relative group"
+          title="统计纯文本字符数（不含 Markdown 语法标记）"
+        >
+          {wordCount} 字
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[var(--tooltip-bg)] text-[var(--tooltip-text)] text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+            统计纯文本字符数，不含 Markdown 语法标记
+          </span>
+        </span>
         <span className={`flex items-center gap-1 ${getStatusColor()}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${
             saveStatus === 'saving' ? 'bg-[var(--warning-500)] animate-pulse' :
