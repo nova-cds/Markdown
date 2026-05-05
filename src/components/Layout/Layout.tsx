@@ -102,6 +102,15 @@ const StatusBar: React.FC = () => {
   const saveStatus = useEditorStore((state) => state.saveStatus);
   const wordCount = useEditorStore((state) => state.wordCount);
   const markdownLength = useEditorStore((state) => state.markdownLength);
+  const [isDark, setIsDark] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkDark = () => setIsDark(document.documentElement.classList.contains('dark'));
+    checkDark();
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const getStatusText = () => {
     switch (saveStatus) {
@@ -137,13 +146,20 @@ const StatusBar: React.FC = () => {
           className="opacity-70 cursor-help relative group"
         >
           {wordCount} 字
-          <span className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-slate-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100 text-xs rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[100] border-2 border-gray-300 dark:border-gray-600 font-medium">
+          <span 
+            className="absolute bottom-full right-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[100] border font-medium"
+            style={{ 
+              backgroundColor: isDark ? 'rgb(30, 41, 59)' : 'rgb(241, 245, 249)',
+              color: isDark ? 'rgb(241, 245, 249)' : 'rgb(15, 23, 42)',
+              borderColor: isDark ? 'rgb(71, 85, 105)' : 'rgb(148, 163, 184)'
+            }}
+          >
             <div className="flex justify-between gap-4">
-              <span className="text-gray-600 dark:text-gray-300">字数</span>
+              <span style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(71, 85, 105)' }}>字数</span>
               <span>{wordCount}</span>
             </div>
             <div className="flex justify-between gap-4 mt-1">
-              <span className="text-gray-600 dark:text-gray-300">Markdown文本</span>
+              <span style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(71, 85, 105)' }}>Markdown文本</span>
               <span>{markdownLength}</span>
             </div>
           </span>

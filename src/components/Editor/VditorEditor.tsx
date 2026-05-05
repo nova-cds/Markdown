@@ -14,6 +14,64 @@ let tableTipTimeout: number | null = null;
 let tableTipElement: HTMLDivElement | null = null;
 let hasShownTableTip = false;
 
+// 计算纯文本字数（去除 markdown 语法标记）
+function countPlainText(md: string): number {
+  let text = md;
+  
+  // 移除代码块（包括语言标识）
+  text = text.replace(/```[\s\S]*?```/g, '');
+  
+  // 移除行内代码
+  text = text.replace(/`[^`]+`/g, '');
+  
+  // 移除图片语法 ![alt](url) → alt
+  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+  
+  // 移除链接语法 [text](url) → text
+  text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  
+  // 移除粗体 **text** 或 __text__
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  text = text.replace(/__([^_]+)__/g, '$1');
+  
+  // 移除斜体 *text* 或 _text_
+  text = text.replace(/\*([^*]+)\*/g, '$1');
+  text = text.replace(/_([^_]+)_/g, '$1');
+  
+  // 移除删除线 ~~text~~
+  text = text.replace(/~~([^~]+)~~/g, '$1');
+  
+  // 移除高亮 ==text==
+  text = text.replace(/==([^=]+)==/g, '$1');
+  
+  // 移除上标 ^text^
+  text = text.replace(/\^([^^]+)\^/g, '$1');
+  
+  // 移除下标 ~text~
+  text = text.replace(/~([^~]+)~/g, '$1');
+  
+  // 移除标题标记 # ## ### 等
+  text = text.replace(/^#{1,6}\s+/gm, '');
+  
+  // 移除列表标记 - * + 和数字.
+  text = text.replace(/^[\s]*[-*+]\s+/gm, '');
+  text = text.replace(/^[\s]*\d+\.\s+/gm, '');
+  
+  // 移除引用标记 >
+  text = text.replace(/^>\s*/gm, '');
+  
+  // 移除水平线 --- *** ___
+  text = text.replace(/^[-*_]{3,}\s*$/gm, '');
+  
+  // 移除 [toc] 标记
+  text = text.replace(/\[toc\]/gi, '');
+  
+  // 移除 HTML 标签
+  text = text.replace(/<[^>]+>/g, '');
+  
+  return text.length;
+}
+
 // 文件转 base64
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -254,13 +312,6 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       return;
     }
     
-    if (!doc.content) {
-      currentPathRef.current = path;
-      contentRef.current = '';
-      isInitializedRef.current = false;
-      return;
-    }
-    
     if (isInitializedRef.current && currentPathRef.current === path) {
       return;
     }
@@ -271,7 +322,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
     }
 
     currentPathRef.current = path;
-    contentRef.current = doc.content;
+    contentRef.current = doc.content || '';
     isInitializedRef.current = false;
 
     const vditor = new Vditor(containerRef.current, {
@@ -347,11 +398,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         enable: false,
       },
       counter: {
-        enable: true,
-        type: 'text',
-        after: (length: number) => {
-          useEditorStore.getState().setWordCount(length);
-        },
+        enable: false,
       },
       // 图片上传配置
       upload: {
@@ -463,7 +510,9 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       value: contentRef.current,
       input: (value: string) => {
         updateDocument(path, value);
-        useEditorStore.getState().setMarkdownLength(value.length);
+        const store = useEditorStore.getState();
+        store.setMarkdownLength(value.length);
+        store.setWordCount(countPlainText(value));
       },
       // 自定义快捷键
       keydown: (event: KeyboardEvent) => {
@@ -510,9 +559,11 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         vditorRef.current = vditor;
         isInitializedRef.current = true;
         
-        // 设置初始 markdown 长度
+        // 设置初始字数统计
         const initialValue = vditor.getValue();
-        useEditorStore.getState().setMarkdownLength(initialValue.length);
+        const store = useEditorStore.getState();
+        store.setMarkdownLength(initialValue.length);
+        store.setWordCount(countPlainText(initialValue));
         
         // 手动启用上标和下标功能（等待官方发布 3.11.3）
         try {
