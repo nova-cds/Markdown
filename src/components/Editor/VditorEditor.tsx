@@ -16,18 +16,20 @@ let hasShownTableTip = false;
 
 // 计算纯文本字数（去除 markdown 语法标记）
 function countPlainText(md: string): number {
+  if (!md) return 0;
+  
   let text = md;
   
-  // 移除代码块（包括语言标识）
+  // 移除代码块
   text = text.replace(/```[\s\S]*?```/g, '');
   
   // 移除行内代码
   text = text.replace(/`[^`]+`/g, '');
   
-  // 移除图片语法 ![alt](url) → alt
-  text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+  // 移除图片 ![alt](url)
+  text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
   
-  // 移除链接语法 [text](url) → text
+  // 移除链接 [text](url) → text
   text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
   
   // 移除粗体 **text** 或 __text__
@@ -35,8 +37,8 @@ function countPlainText(md: string): number {
   text = text.replace(/__([^_]+)__/g, '$1');
   
   // 移除斜体 *text* 或 _text_
-  text = text.replace(/\*([^*]+)\*/g, '$1');
-  text = text.replace(/_([^_]+)_/g, '$1');
+  text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1');
+  text = text.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '$1');
   
   // 移除删除线 ~~text~~
   text = text.replace(/~~([^~]+)~~/g, '$1');
@@ -45,29 +47,33 @@ function countPlainText(md: string): number {
   text = text.replace(/==([^=]+)==/g, '$1');
   
   // 移除上标 ^text^
-  text = text.replace(/\^([^^]+)\^/g, '$1');
+  text = text.replace(/\^([^^\n]+)\^/g, '$1');
   
-  // 移除下标 ~text~
-  text = text.replace(/~([^~]+)~/g, '$1');
+  // 移除下标 ~text~ (单个波浪线，排除删除线)
+  text = text.replace(/(?<!~)~([^~\n]+)~(?!~)/g, '$1');
   
-  // 移除标题标记 # ## ### 等
-  text = text.replace(/^#{1,6}\s+/gm, '');
+  // 移除标题标记
+  text = text.replace(/^#{1,6}\s*/gm, '');
   
-  // 移除列表标记 - * + 和数字.
-  text = text.replace(/^[\s]*[-*+]\s+/gm, '');
-  text = text.replace(/^[\s]*\d+\.\s+/gm, '');
+  // 移除列表标记
+  text = text.replace(/^[\t ]*[-*+]\s+/gm, '');
+  text = text.replace(/^[\t ]*\d+\.\s+/gm, '');
   
-  // 移除引用标记 >
+  // 移除引用标记
   text = text.replace(/^>\s*/gm, '');
   
-  // 移除水平线 --- *** ___
-  text = text.replace(/^[-*_]{3,}\s*$/gm, '');
+  // 移除水平线
+  text = text.replace(/^[-*_]{3,}$/gm, '');
   
-  // 移除 [toc] 标记
+  // 移除 [toc]
   text = text.replace(/\[toc\]/gi, '');
   
   // 移除 HTML 标签
   text = text.replace(/<[^>]+>/g, '');
+  
+  // 移除多余空白字符
+  text = text.replace(/[\n\r]+/g, '');
+  text = text.trim();
   
   return text.length;
 }
@@ -510,9 +516,15 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       value: contentRef.current,
       input: (value: string) => {
         updateDocument(path, value);
-        const store = useEditorStore.getState();
-        store.setMarkdownLength(value.length);
-        store.setWordCount(countPlainText(value));
+        // 使用 setTimeout 确保 vditorRef 已设置
+        setTimeout(() => {
+          const md = vditorRef.current?.getValue() || '';
+          const plainText = countPlainText(md);
+          console.log('[Counter] md:', JSON.stringify(md), 'length:', md.length, 'plainText:', plainText);
+          const store = useEditorStore.getState();
+          store.setMarkdownLength(md.length);
+          store.setWordCount(plainText);
+        }, 0);
       },
       // 自定义快捷键
       keydown: (event: KeyboardEvent) => {
@@ -636,9 +648,9 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }
         };
         
-        // 绑定到整个编辑器容器
+        // 绑定到整个编辑器容器（捕获阶段）
         if (containerRef.current) {
-          containerRef.current.addEventListener('click', handleTocClick as EventListener);
+          containerRef.current.addEventListener('click', handleTocClick as EventListener, true);
           (vditorRef.current as any)._tocClickHandler = handleTocClick;
           (vditorRef.current as any)._tocClickTarget = containerRef.current;
         }
@@ -876,7 +888,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           containerRef.current.removeEventListener('keydown', tabKeydownHandler, true);
         }
         if (tocClickHandler && tocClickTarget) {
-          tocClickTarget.removeEventListener('click', tocClickHandler);
+          tocClickTarget.removeEventListener('click', tocClickHandler, true);
         }
         vditorRef.current.destroy();
         vditorRef.current = null;

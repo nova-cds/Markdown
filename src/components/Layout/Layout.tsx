@@ -143,13 +143,13 @@ const StatusBar: React.FC = () => {
       </div>
       <div className="flex items-center gap-4 text-[var(--statusbar-text)]">
         <span 
-          className="opacity-70 cursor-help relative group"
+          className="cursor-help relative group"
         >
-          {wordCount} 字
+          <span className="opacity-70">{wordCount} 字</span>
           <span 
-            className="absolute bottom-full right-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-2xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[100] border font-medium"
+            className="absolute bottom-full right-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-2xl whitespace-nowrap pointer-events-none z-[100] border font-medium hidden group-hover:block"
             style={{ 
-              backgroundColor: isDark ? 'rgb(30, 41, 59)' : 'rgb(241, 245, 249)',
+              backgroundColor: isDark ? 'rgb(30, 41, 59)' : 'rgb(255, 255, 255)',
               color: isDark ? 'rgb(241, 245, 249)' : 'rgb(15, 23, 42)',
               borderColor: isDark ? 'rgb(71, 85, 105)' : 'rgb(148, 163, 184)'
             }}
