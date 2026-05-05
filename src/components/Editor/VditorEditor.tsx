@@ -278,11 +278,19 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
   const saveToFile = useSaveToFile();
   const embedMaxDepth = useSettingsStore((state) => state.embedMaxDepth);
   const embedMaxCount = useSettingsStore((state) => state.embedMaxCount);
+  const rootHandle = useFileStore((state) => state.rootHandle);
   const isInitializedRef = useRef(false);
   const currentPathRef = useRef<string>('');
   const contentRef = useRef<string>('');
   const [initKey, setInitKey] = useState(0);
   const processedEmbedsRef = useRef<Set<string>>(new Set());
+  
+  const getRootPath = useCallback(() => {
+    if (isTauriCached() && rootHandle) {
+      return rootHandle as unknown as string;
+    }
+    return undefined;
+  }, [rootHandle]);
   
   const pathRef = useRef(path);
   const openDocumentRef = useRef(openDocument);
@@ -320,7 +328,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       return false;
     }
     
-    const resolvedPath = resolveDocPath(href, pathRef.current);
+    const rootPath = getRootPath();
+    const resolvedPath = resolveDocPath(href, pathRef.current, rootPath);
     const docPath = `file://${resolvedPath}`;
     
     try {
@@ -337,7 +346,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
     }
     
     return false;
-  }, []);
+  }, [getRootPath]);
 
   // 监听内容延迟加载（只对未初始化的文档）
   useEffect(() => {
@@ -996,6 +1005,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         // 处理预览模式的嵌入内容
         const currentPath = path;
         const maxEmbedCount = embedMaxCount;
+        const currentRootPath = getRootPath();
         let isProcessing = false;
         let processedInCurrentBatch = 0; // 当前批次已处理的数量
         
@@ -1035,7 +1045,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
                 if (!embedPath) continue;
                 
                 const linkInfo = mdEmbedLinks.find(l => {
-                  const resolved = resolveDocPath(l.url, currentPath).replace(/\\/g, '/');
+                  const resolved = resolveDocPath(l.url, currentPath, currentRootPath).replace(/\\/g, '/');
                   return resolved === embedPath.replace(/\\/g, '/') || l.url === embedPath;
                 });
                 
@@ -1089,7 +1099,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
               }
               
               const href = link.getAttribute('href') || '';
-              const resolvedPath = resolveDocPath(href, currentPath);
+              const resolvedPath = resolveDocPath(href, currentPath, currentRootPath);
               const normalizedResolvedPath = resolvedPath.replace(/\\/g, '/');
               const currentDocFullPath = currentPath.replace(/^file:\/\//, '').replace(/\\/g, '/');
               

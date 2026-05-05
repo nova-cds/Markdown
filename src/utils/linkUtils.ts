@@ -30,9 +30,18 @@ export function resolveDocPath(
   
   let cleanPath = linkPath.replace(/^file:\/\//, '');
   
-  // 如果是绝对路径（以/开头），直接返回
+  // 如果是绝对路径（以/开头），表示从项目根目录开始
   if (cleanPath.startsWith('/')) {
-    return cleanPath.substring(1); // 去掉开头的/
+    const relativePath = cleanPath.substring(1);
+    
+    // 如果提供了rootPath（Tauri环境的绝对根路径），拼接返回
+    if (rootPath) {
+      const sep = rootPath.includes('\\') ? '\\' : '/';
+      return rootPath + sep + relativePath.replace(/\//g, sep);
+    }
+    
+    // 否则返回相对路径
+    return relativePath;
   }
   
   // 获取当前文档所在的目录
