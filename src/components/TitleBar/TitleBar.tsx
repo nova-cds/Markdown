@@ -46,17 +46,7 @@ export const TitleBar: React.FC = () => {
     }
   }, []);
 
-  const handleTitleBarMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    
-    const win = getTauriWindow();
-    if (win) {
-      e.preventDefault();
-      win.startDragging();
-    }
-  };
-
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
     const win = getTauriWindow();
     if (win) {
       win.toggleMaximize();
@@ -79,19 +69,19 @@ export const TitleBar: React.FC = () => {
     <>
       <div 
         className="h-10 bg-[var(--titlebar-bg)] border-b border-[var(--editor-border)] flex items-center select-none"
-        onMouseDown={handleTitleBarMouseDown}
+        data-tauri-drag-region
         onDoubleClick={handleDoubleClick}
       >
-        <div className="flex-1 flex items-end h-full min-w-0">
+        <div className="flex-1 flex items-end h-full min-w-0" data-tauri-drag-region>
           {tabs.length === 0 ? (
-            <div className="flex items-center h-full px-4">
+            <div className="flex items-center h-full px-4" data-tauri-drag-region>
               <span className="text-sm text-[var(--editor-text-muted)] flex items-center gap-2">
                 <FileText size={14} />
                 MD Editor
               </span>
             </div>
           ) : (
-            <div className="flex items-end h-full flex-1 min-w-0">
+            <div className="flex items-end h-full flex-1 min-w-0" data-tauri-drag-region>
               {tabs.map((tabPath) => {
                 const isActive = tabPath === activeDocPath;
                 const doc = documents[tabPath];
@@ -110,7 +100,6 @@ export const TitleBar: React.FC = () => {
                         : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-active-bg)] hover:text-[var(--editor-text)]'
                       }
                     `}
-                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveDocument(tabPath);
@@ -141,7 +130,6 @@ export const TitleBar: React.FC = () => {
                         text-[var(--editor-text-muted)] hover:text-[var(--editor-text)]
                         transition-all
                       `}
-                      onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         closeDocument(tabPath);
@@ -158,14 +146,11 @@ export const TitleBar: React.FC = () => {
 
         <div 
           className="w-20 h-full flex-shrink-0"
-          onMouseDown={handleTitleBarMouseDown}
+          data-tauri-drag-region
           onDoubleClick={handleDoubleClick}
         />
 
-        <div 
-          className="flex items-center h-full flex-shrink-0"
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+        <div className="flex items-center h-full flex-shrink-0">
           {activeDocPath && (
             <button
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[var(--accent-500)] text-white hover:bg-[var(--accent-600)] transition-all mx-1"
