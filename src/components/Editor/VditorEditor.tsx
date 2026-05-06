@@ -8,6 +8,19 @@ import { useSaveToFile } from '../../hooks/useAutoSave';
 import { isTauriCached, waitForTauri } from '../../utils/platform';
 import { isLocalMdFile, resolveDocPath, readMdFileContent, getFileDisplayName, normalizePath, getFileName } from '../../utils/linkUtils';
 import { shouldRenderEmbed, processEmbedsInMarkdown, createEmbedContainer, createEmbedWarning, EmbedContext } from '../../utils/embedUtils';
+import EmojiPicker from './EmojiPicker';
+
+// 本地化 Vditor CDN 路径
+const VDITOR_CDN = './vditor';
+
+// debounce 工具函数
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): T {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return ((...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  }) as T;
+}
 
 interface VditorEditorProps {
   path: string;
@@ -284,6 +297,22 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
   const contentRef = useRef<string>('');
   const [initKey, setInitKey] = useState(0);
   const processedEmbedsRef = useRef<Set<string>>(new Set());
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
+  // 字数统计节流 - 使用ref保存debounce函数
+  const wordCountDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const updateWordCountDebounced = useCallback(() => {
+    if (wordCountDebounceRef.current) {
+      clearTimeout(wordCountDebounceRef.current);
+    }
+    wordCountDebounceRef.current = setTimeout(() => {
+      const md = vditorRef.current?.getValue() || '';
+      const plainText = countPlainText(md);
+      const store = useEditorStore.getState();
+      store.setMarkdownLength(md.length);
+      store.setWordCount(plainText);
+    }, 300);
+  }, []);
   
   const getRootPath = useCallback(() => {
     if (isTauriCached() && rootHandle) {
@@ -436,39 +465,152 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       },
       hint: {
         parse: false,
-        emoji: {},
+        emoji: {
+          // 常用表情
+          'smile': '😊', 'laugh': '😄', 'wink': '😉', 'love': '😍',
+          'cool': '😎', 'think': '🤔', 'sad': '😢', 'cry': '😭',
+          'angry': '😠', 'surprised': '😮', 'sleepy': '😴', 'sick': '🤒',
+          // 手势
+          'ok': '👌', 'thumbsup': '👍', 'thumbsdown': '👎', 'clap': '👏',
+          'pray': '🙏', 'fist': '✊', 'victory': '✌️', 'muscle': '💪',
+          // 爱心
+          'heart': '❤️', 'blue_heart': '💙', 'green_heart': '💚',
+          'yellow_heart': '💛', 'purple_heart': '💜', 'sparkling_heart': '💖',
+          // 符号
+          'check': '✅', 'cross': '❌', 'warning': '⚠️', 'star': '⭐',
+          'sparkles': '✨', 'fire': '🔥', 'rocket': '🚀', 'bulb': '💡',
+          // 物品
+          'book': '📖', 'pencil': '📝', 'memo': '📋', 'link': '🔗',
+          'lock': '🔒', 'key': '🔑', 'computer': '💻', 'email': '📧',
+          'phone': '📞', 'camera': '📷',
+          // 自然
+          'sunny': '☀️', 'cloud': '☁️', 'rainbow': '🌈', 'flower': '🌸',
+          'tree': '🌳', 'apple': '🍎', 'banana': '🍌', 'watermelon': '🍉',
+          // 动物
+          'dog': '🐕', 'cat': '🐱', 'rabbit': '🐰', 'panda': '🐼',
+          'bird': '🐦', 'fish': '🐟', 'butterfly': '🦋', 'bee': '🐝',
+          // 食物
+          'coffee': '☕', 'tea': '🍵', 'beer': '🍺', 'cake': '🍰',
+          'pizza': '🍕', 'burger': '🍔', 'ramen': '🍜', 'sushi': '🍣',
+          // 运动
+          'soccer': '⚽', 'basketball': '🏀', 'tennis': '🎾', 'trophy': '🏆',
+          'medal': '🏅', 'gold': '🥇', 'silver': '🥈', 'bronze': '🥉',
+          // 庆祝
+          'party': '🎉', 'gift': '🎁', 'crown': '👑', 'bell': '🔔',
+          'balloon': '🎈', 'fireworks': '🎆', 'christmas': '🎄',
+        },
       },
       // 工具栏配置
       toolbar: [
-        'emoji',
-        'headings',
-        'bold',
-        'italic',
-        'strike',
-        'link',
+        {
+          name: 'emoji',
+          tip: '表情',
+          tipPosition: 's',
+        },
+        {
+          name: 'headings',
+          tip: '标题',
+          tipPosition: 's',
+        },
+        {
+          name: 'bold',
+          tip: '粗体 | Ctrl+B',
+          tipPosition: 's',
+        },
+        {
+          name: 'italic',
+          tip: '斜体 | Ctrl+I',
+          tipPosition: 's',
+        },
+        {
+          name: 'strike',
+          tip: '删除线 | Ctrl+D',
+          tipPosition: 's',
+        },
+        {
+          name: 'link',
+          tip: '链接 | Ctrl+K',
+          tipPosition: 's',
+        },
         '|',
-        'list',
-        'ordered-list',
-        'check',
-        'outdent',
-        'indent',
+        {
+          name: 'list',
+          tip: '无序列表',
+          tipPosition: 's',
+        },
+        {
+          name: 'ordered-list',
+          tip: '有序列表',
+          tipPosition: 's',
+        },
+        {
+          name: 'check',
+          tip: '任务列表',
+          tipPosition: 's',
+        },
+        {
+          name: 'outdent',
+          tip: '减少缩进',
+          tipPosition: 's',
+        },
+        {
+          name: 'indent',
+          tip: '增加缩进',
+          tipPosition: 's',
+        },
         '|',
-        'quote',
-        'line',
-        'code',
-        'inline-code',
+        {
+          name: 'quote',
+          tip: '引用',
+          tipPosition: 's',
+        },
+        {
+          name: 'line',
+          tip: '分割线',
+          tipPosition: 's',
+        },
+        {
+          name: 'code',
+          tip: '代码块',
+          tipPosition: 's',
+        },
+        {
+          name: 'inline-code',
+          tip: '行内代码 | Ctrl+`',
+          tipPosition: 's',
+        },
         {
           name: 'table',
           tip: '表格 | Ctrl+M\n━━━━━━━━━━━━━\n添加行: Ctrl+=\n删除行: Ctrl+-\n添加列: Ctrl+Shift+=\n删除列: Ctrl+Shift+-\n上插行: Ctrl+Shift+F\n左插列: Ctrl+Shift+G',
           tipPosition: 's',
         },
         '|',
-        'undo',
-        'redo',
+        {
+          name: 'undo',
+          tip: '撤销 | Ctrl+Z',
+          tipPosition: 's',
+        },
+        {
+          name: 'redo',
+          tip: '重做 | Ctrl+Shift+Z',
+          tipPosition: 's',
+        },
         '|',
-        'outline',
-        'edit-mode',
-        'preview',
+        {
+          name: 'outline',
+          tip: '大纲',
+          tipPosition: 's',
+        },
+        {
+          name: 'edit-mode',
+          tip: '编辑模式',
+          tipPosition: 's',
+        },
+        {
+          name: 'preview',
+          tip: '预览',
+          tipPosition: 's',
+        },
         {
           name: 'more',
           toolbar: [
@@ -597,115 +739,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
       value: contentRef.current,
       input: (value: string) => {
         updateDocument(path, value);
-        // 使用 setTimeout 确保 vditorRef 已设置
-        setTimeout(() => {
-          const md = vditorRef.current?.getValue() || '';
-          const plainText = countPlainText(md);
-          const store = useEditorStore.getState();
-          store.setMarkdownLength(md.length);
-          store.setWordCount(plainText);
-        }, 0);
+        updateWordCountDebounced();
       },
-      // 自定义快捷键
-      keydown: (event: KeyboardEvent) => {
-        // Ctrl+S 保存
-        if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-          event.preventDefault();
-          saveToFile();
-          return true;
-        }
-        
-        // Ctrl+Shift+Z 重做 - 触发工具栏 redo 按钮
-        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'z') {
-          event.preventDefault();
-          const redoBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="redo"]') as HTMLButtonElement;
-          if (redoBtn) {
-            redoBtn.click();
-          }
-          return true;
-        }
-        
-        // Tab 键 - 由 capture handler 处理，这里阻止 Vditor 默认行为
-        if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey) {
-          return true;
-        }
-        
-        // 表格内按Enter时显示快捷键提示
-        if (event.key === 'Enter' && !event.ctrlKey && !event.shiftKey) {
-          const selection = window.getSelection();
-          if (selection && selection.rangeCount > 0) {
-            const anchor = selection.anchorNode;
-            if (anchor) {
-              const cell = anchor.parentElement?.closest('td, th');
-              if (cell) {
-                showTableShortcutTip();
-              }
-            }
-          }
-        }
-        
-        // 空格键 - 检测中文"》"自动转换为引用
-        if (event.key === ' ' && !event.ctrlKey && !event.metaKey) {
-          const selection = window.getSelection();
-          if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const container = range.startContainer;
-            
-            if (container.nodeType === Node.TEXT_NODE) {
-              const text = container.textContent || '';
-              const offset = range.startOffset;
-              
-              // 检查光标前是否有连续的"》"
-              let bracketCount = 0;
-              let checkOffset = offset - 1;
-              while (checkOffset >= 0 && text[checkOffset] === '》') {
-                bracketCount++;
-                checkOffset--;
-              }
-              
-              if (bracketCount === 0) return false;
-              
-              // 获取当前行光标前的所有文本（不包括》）
-              let lineTextBeforeBrackets = text.substring(0, checkOffset + 1);
-              
-              // 向前查找兄弟节点，获取完整行文本
-              let currentNode = container.previousSibling;
-              while (currentNode) {
-                if (currentNode.nodeType === Node.TEXT_NODE) {
-                  lineTextBeforeBrackets = currentNode.textContent + lineTextBeforeBrackets;
-                } else if (currentNode instanceof HTMLElement) {
-                  lineTextBeforeBrackets = currentNode.textContent + lineTextBeforeBrackets;
-                }
-                currentNode = currentNode.previousSibling;
-              }
-              
-              // 检查从行首到》之间是否只有空白（或为空）
-              if (/^\s*$/.test(lineTextBeforeBrackets)) {
-                event.preventDefault();
-                
-                // 替换所有"》"为"> "
-                const newText = text.substring(0, checkOffset + 1) + '> '.repeat(bracketCount) + text.substring(offset);
-                container.textContent = newText;
-                
-                // 光标移到最后一个"> "后面
-                range.setStart(container, checkOffset + 1 + 2 * bracketCount);
-                range.collapse(true);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                
-                // 触发input事件让Vditor重新渲染
-                const vditorReset = containerRef.current?.querySelector('.vditor-reset');
-                vditorReset?.dispatchEvent(new InputEvent('input', { bubbles: true }));
-                
-                return true;
-              }
-            }
-          }
-        }
-        
-        return false;
-      },
-      // 编辑器准备就绪回调
       after: () => {
         vditorRef.current = vditor;
         isInitializedRef.current = true;
@@ -735,6 +770,88 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
         
+        // 拦截原版emoji按钮点击，使用自定义表情选择器
+        const emojiBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="emoji"]');
+        if (emojiBtn) {
+          // 隐藏原版emoji面板
+          const style = document.createElement('style');
+          style.textContent = '.vditor-emojis { display: none !important; }';
+          document.head.appendChild(style);
+          
+          // 拦截点击事件
+          const handleEmojiClick = (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowEmojiPicker(true);
+          };
+          emojiBtn.addEventListener('click', handleEmojiClick, true);
+          (vditorRef.current as any)._emojiClickHandler = handleEmojiClick;
+          (vditorRef.current as any)._emojiStyleEl = style;
+        }
+        
+        // 拦截indent按钮，处理任务列表全选缩进问题
+        const indentBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="indent"]');
+        if (indentBtn) {
+          const handleIndentClick = (e: Event) => {
+            // 在缩进执行后，检测并修复任务列表
+            setTimeout(() => {
+              const vditor = vditorRef.current;
+              if (!vditor) return;
+              
+              // 获取当前光标位置
+              const selection = window.getSelection();
+              if (!selection || selection.rangeCount === 0) return;
+              
+              const range = selection.getRangeAt(0);
+              const container = range.commonAncestorContainer;
+              const li = container.nodeType === Node.TEXT_NODE 
+                ? container.parentElement?.closest('li')
+                : (container as Element).closest('li');
+              
+              if (li) {
+                // 检查这个li是否包含任务列表的文本格式（[ ] 或 [x]）
+                const text = li.textContent || '';
+                const hasTaskFormat = /\[([ xX])\]/.test(text);
+                
+                if (hasTaskFormat && !li.querySelector('input[type="checkbox"]')) {
+                  // 找到li内最后一个文本节点
+                  const walker = document.createTreeWalker(li, NodeFilter.SHOW_TEXT, null);
+                  let lastTextNode: Text | null = null;
+                  let node;
+                  while (node = walker.nextNode()) {
+                    lastTextNode = node as Text;
+                  }
+                  
+                  if (lastTextNode) {
+                    // 将光标移动到行尾
+                    const newRange = document.createRange();
+                    newRange.setStart(lastTextNode, lastTextNode.length);
+                    newRange.setEnd(lastTextNode, lastTextNode.length);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                    
+                    // 在行尾插入空格
+                    vditor.insertValue(' ');
+                    
+                    // 延迟删除空格
+                    setTimeout(() => {
+                      const sel = window.getSelection();
+                      if (sel && sel.rangeCount > 0) {
+                        const r = sel.getRangeAt(0);
+                        // 删除最后一个字符（刚插入的空格）
+                        r.setStart(r.startContainer, Math.max(0, r.startOffset - 1));
+                        r.deleteContents();
+                      }
+                    }, 100);
+                  }
+                }
+              }
+            }, 100);
+          };
+          indentBtn.addEventListener('click', handleIndentClick, true);
+          (vditorRef.current as any)._indentClickHandler = handleIndentClick;
+        }
+        
         // 恢复预览模式
         const currentVditor = vditor;
         setTimeout(() => {
@@ -758,7 +875,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         if (savedScrollPosition > 0) {
           setTimeout(() => {
             // 尝试多种选择器找到滚动容器
-            let vditorReset: HTMLElement | null = null;
+            let vditorResetEl: HTMLElement | null = null;
             const selectors = [
               '.vditor-ir .vditor-reset',
               '.vditor-sv .vditor-reset', 
@@ -768,12 +885,12 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
             for (const selector of selectors) {
               const el = containerRef.current?.querySelector(selector) as HTMLElement;
               if (el && el.scrollHeight > el.clientHeight) {
-                vditorReset = el;
+                vditorResetEl = el;
                 break;
               }
             }
-            if (vditorReset) {
-              vditorReset.scrollTop = savedScrollPosition;
+            if (vditorResetEl) {
+              vditorResetEl.scrollTop = savedScrollPosition;
             }
           }, 200);
         }
@@ -1126,7 +1243,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
                 
                 await new Promise<void>((resolve) => {
                   Vditor.preview(tempDiv, result.content || '', {
-                    cdn: 'https://unpkg.com/vditor@3.11.2',
+      cdn: VDITOR_CDN,
                     mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
                     markdown: {
                       codeBlockPreview: true,
@@ -1216,9 +1333,11 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
             }
             
             if (heading) {
+              // 大文档使用即时滚动，小文档使用平滑滚动
+              const isLargeDoc = vditorReset.scrollHeight > 50000;
               vditorReset.scrollTo({
                 top: heading.offsetTop - 20,
-                behavior: 'smooth'
+                behavior: isLargeDoc ? 'instant' : 'smooth'
               });
             }
           }
@@ -1237,7 +1356,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           if (mermaidElements && mermaidElements.length > 0) {
             try {
               const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'classic';
-              Vditor.mermaidRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2', theme);
+              Vditor.mermaidRender(containerRef.current!, VDITOR_CDN, theme);
             } catch (e) {
               console.warn('[Mermaid] 渲染失败:', e);
             }
@@ -1249,7 +1368,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           const plantumlElements = containerRef.current?.querySelectorAll('.vditor-ir pre.vditor-reset .language-plantuml');
           if (plantumlElements && plantumlElements.length > 0) {
             try {
-              Vditor.plantumlRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2');
+              Vditor.plantumlRender(containerRef.current!, VDITOR_CDN);
             } catch (e) {
               console.warn('[PlantUML] 渲染失败:', e);
             }
@@ -1355,7 +1474,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
             if (mermaidElements && mermaidElements.length > 0) {
               try {
                 const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'classic';
-                Vditor.mermaidRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2', theme);
+                Vditor.mermaidRender(containerRef.current!, VDITOR_CDN, theme);
               } catch (e) {
                 console.warn('[Mermaid] 渲染失败:', e);
               }
@@ -1373,7 +1492,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
             const plantumlElements = containerRef.current?.querySelectorAll('.vditor-ir .vditor-reset .language-plantuml');
             if (plantumlElements && plantumlElements.length > 0) {
               try {
-                Vditor.plantumlRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2');
+                Vditor.plantumlRender(containerRef.current!, VDITOR_CDN);
               } catch (e) {
                 console.warn('[PlantUML] 渲染失败:', e);
               }
@@ -1381,8 +1500,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }, 300);
         };
         
-        // 监听DOM变化，处理新插入的图片和代码块
-        const imageObserver = new MutationObserver((mutations) => {
+        // MutationObserver 回调处理函数
+        const handleMutationCallback = (mutations: MutationRecord[]) => {
           for (const mutation of mutations) {
             for (const node of Array.from(mutation.addedNodes)) {
               // 处理图片
@@ -1417,7 +1536,13 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
               }
             }
           }
-        });
+        };
+        
+        // MutationObserver 添加 50ms debounce
+        const debouncedMutationCallback = debounce(handleMutationCallback, 50);
+        
+        // 监听DOM变化，处理新插入的图片和代码块
+        const imageObserver = new MutationObserver(debouncedMutationCallback);
         
         imageObserver.observe(containerRef.current!, {
           childList: true,
@@ -1426,13 +1551,13 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         
         // 自动滚动逻辑 - 类似 VS Code
         // 关键：滚动元素是 .vditor-reset，不是 .vditor-content
-        const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+        const vditorResetForScroll = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
         const contentEl = containerRef.current?.querySelector('.vditor-content') as HTMLElement;
         
         let isUserInput = false;
         
         const handleScroll = () => {
-          if (!vditorReset || !contentEl || !isUserInput) return;
+          if (!vditorResetForScroll || !contentEl || !isUserInput) return;
           
           const selection = window.getSelection();
           if (!selection || selection.rangeCount === 0) return;
@@ -1457,7 +1582,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           
           if (currentDistanceFromBottom < fixedDistanceFromBottom) {
             const scrollAmount = fixedDistanceFromBottom - currentDistanceFromBottom;
-            vditorReset.scrollTop += scrollAmount;
+            vditorResetForScroll.scrollTop += scrollAmount;
           }
           
           isUserInput = false;
@@ -1472,14 +1597,14 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }
         };
         
-        if (vditorReset) {
-          vditorReset.addEventListener('keydown', handleKeyDown);
+        if (vditorResetForScroll) {
+          vditorResetForScroll.addEventListener('keydown', handleKeyDown as EventListener);
         }
         
         // 保存引用以便清理
         (vditorRef.current as any)._imageObserver = imageObserver;
         (vditorRef.current as any)._handleKeyDown = handleKeyDown;
-        (vditorRef.current as any)._vditorReset = vditorReset;
+        (vditorRef.current as any)._vditorReset = vditorResetForScroll;
       },
     });
 
@@ -1562,8 +1687,19 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
   }, []);
 
   return (
-    <div className="vditor-container">
+    <div className="vditor-container" style={{ position: 'relative' }}>
       <div ref={containerRef} className="vditor-wrapper" />
+      {/* 表情选择器弹窗 */}
+      {showEmojiPicker && (
+        <EmojiPicker
+          onSelect={(emoji) => {
+            if (vditorRef.current) {
+              vditorRef.current.insertValue(emoji + ' ');
+            }
+          }}
+          onClose={() => setShowEmojiPicker(false)}
+        />
+      )}
     </div>
   );
 });

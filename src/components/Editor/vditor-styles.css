@@ -152,18 +152,6 @@
   color: var(--editor-link, #60a5fa) !important;
 }
 
-/* 暗色主题代码块 */
-.dark .vditor .vditor-ir pre.vditor-reset code:not(.hljs),
-.dark .vditor .vditor-sv pre.vditor-reset code:not(.hljs) {
-  background-color: var(--editor-code-bg, #1e293b) !important;
-  color: var(--editor-text, #e2e8f0) !important;
-}
-
-.dark .vditor .vditor-ir pre.vditor-reset pre code,
-.dark .vditor .vditor-sv pre.vditor-reset pre code {
-  background-color: var(--editor-code-bg, #1e293b) !important;
-}
-
 /* 暗色主题引用 */
 .dark .vditor .vditor-ir pre.vditor-reset blockquote,
 .dark .vditor .vditor-sv pre.vditor-reset blockquote,
@@ -336,4 +324,138 @@
 .dark .vditor .vditor-sv__preview a:hover,
 .dark .vditor .vditor-ir__preview a:hover {
   color: var(--accent-300, #93c5fd) !important;
+}
+
+/* 大纲对齐修复 */
+.vditor .vditor-outline ul {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 0 !important;
+}
+
+.vditor .vditor-outline li {
+  position: relative !important;
+  padding-left: 8px !important;
+  margin: 0 !important;
+  line-height: 1.8 !important;
+}
+
+/* 嵌套层级缩进 */
+.vditor .vditor-outline li li {
+  padding-left: 16px !important;
+}
+
+.vditor .vditor-outline li li li {
+  padding-left: 24px !important;
+}
+
+.vditor .vditor-outline li li li li {
+  padding-left: 32px !important;
+}
+
+/* 列表项容器 - 包含箭头和标题 */
+.vditor .vditor-outline li > span {
+  display: flex !important;
+  align-items: center !important;
+  padding: 2px 4px !important;
+}
+
+/* 展开/折叠箭头 - 保持原版大小 */
+.vditor .vditor-outline li > span > svg {
+  flex-shrink: 0 !important;
+  width: 10px !important;
+  height: 10px !important;
+  margin-right: 4px !important;
+}
+
+/* 没有箭头的项 - 添加占位符保持对齐 */
+.vditor .vditor-outline li > span:not(:has(> svg))::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 10px !important;
+  height: 10px !important;
+  margin-right: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+/* 标题文字 */
+.vditor .vditor-outline li > span > span {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* 鼠标悬停效果 */
+.vditor .vditor-outline li > span:hover {
+  background-color: var(--editor-code-bg, #f5f5f5) !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+}
+
+/* 暗色主题大纲 */
+.dark .vditor .vditor-outline li > span:hover {
+  background-color: var(--editor-code-bg, #1e293b) !important;
+}
+
+/* 代码字体大小统一 - 强制与正文一致 */
+.vditor .vditor-ir pre.vditor-reset code,
+.vditor .vditor-sv pre.vditor-reset code,
+.vditor .vditor-wysiwyg pre.vditor-reset code {
+  font-size: 1em !important;
+}
+
+/* 亮色模式 - 行内代码 */
+.vditor .vditor-ir pre.vditor-reset code:not(.hljs),
+.vditor .vditor-sv pre.vditor-reset code:not(.hljs),
+.vditor .vditor-wysiwyg pre.vditor-reset code:not(.hljs) {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+}
+
+/* 亮色模式 - 多行代码块背景 */
+.vditor .vditor-ir pre.vditor-reset pre code.hljs,
+.vditor .vditor-sv pre.vditor-reset pre code.hljs,
+.vditor .vditor-wysiwyg pre.vditor-reset pre code.hljs {
+  background-color: #f1f5f9 !important;
+}
+
+/* IR模式代码块容器和预览区背景 */
+.vditor .vditor-ir .vditor-ir__marker--pre,
+.vditor .vditor-ir .vditor-ir__preview {
+  background-color: transparent !important;
+}
+
+.vditor .vditor-ir pre.vditor-reset .vditor-ir__marker--pre pre code,
+.vditor .vditor-ir pre.vditor-reset .vditor-ir__preview pre code {
+  background-color: #f1f5f9 !important;
+}
+
+/* 暗色模式 - 行内代码 */
+.dark .vditor .vditor-ir pre.vditor-reset code:not(.hljs),
+.dark .vditor .vditor-sv pre.vditor-reset code:not(.hljs),
+.dark .vditor .vditor-wysiwyg pre.vditor-reset code:not(.hljs) {
+  background-color: #1e3a5f !important;
+  color: #93c5fd !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+}
+
+/* 暗色模式 - 多行代码块背景 */
+.dark .vditor .vditor-ir pre.vditor-reset pre code.hljs,
+.dark .vditor .vditor-sv pre.vditor-reset pre code.hljs,
+.dark .vditor .vditor-wysiwyg pre.vditor-reset pre code.hljs {
+  background-color: #1e293b !important;
+}
+
+/* 暗色模式 - IR模式代码块容器和预览区背景 */
+.dark .vditor .vditor-ir .vditor-ir__marker--pre,
+.dark .vditor .vditor-ir .vditor-ir__preview {
+  background-color: transparent !important;
+}
+
+.dark .vditor .vditor-ir pre.vditor-reset .vditor-ir__marker--pre pre code,
+.dark .vditor .vditor-ir pre.vditor-reset .vditor-ir__preview pre code {
+  background-color: #1e293b !important;
 }
