@@ -1244,8 +1244,21 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }
         };
         
+        // 渲染 PlantUML 图表
+        const renderPlantUML = () => {
+          const plantumlElements = containerRef.current?.querySelectorAll('.vditor-ir pre.vditor-reset .language-plantuml');
+          if (plantumlElements && plantumlElements.length > 0) {
+            try {
+              Vditor.plantumlRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2');
+            } catch (e) {
+              console.warn('[PlantUML] 渲染失败:', e);
+            }
+          }
+        };
+        
         // 初始渲染
         setTimeout(renderMermaid, 100);
+        setTimeout(renderPlantUML, 100);
         
         // 检测光标是否在行首
         const isAtLineStart = (): boolean => {
@@ -1350,6 +1363,24 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
           }, 300);
         };
         
+        // PlantUML 渲染防抖
+        let plantumlDebounceTimer: number | null = null;
+        const debouncedRenderPlantUML = () => {
+          if (plantumlDebounceTimer) {
+            clearTimeout(plantumlDebounceTimer);
+          }
+          plantumlDebounceTimer = window.setTimeout(() => {
+            const plantumlElements = containerRef.current?.querySelectorAll('.vditor-ir .vditor-reset .language-plantuml');
+            if (plantumlElements && plantumlElements.length > 0) {
+              try {
+                Vditor.plantumlRender(containerRef.current!, 'https://unpkg.com/vditor@3.11.2');
+              } catch (e) {
+                console.warn('[PlantUML] 渲染失败:', e);
+              }
+            }
+          }, 300);
+        };
+        
         // 监听DOM变化，处理新插入的图片和代码块
         const imageObserver = new MutationObserver((mutations) => {
           for (const mutation of mutations) {
@@ -1365,6 +1396,12 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
                 if (node.classList?.contains('mermaid') || 
                     node.querySelector?.('.mermaid')) {
                   debouncedRenderMermaid();
+                }
+                
+                // 检测 PlantUML 代码块
+                if (node.classList?.contains('language-plantuml') || 
+                    node.querySelector?.('.language-plantuml')) {
+                  debouncedRenderPlantUML();
                 }
                 
                 // 检测是否是 Tab 触发的代码块

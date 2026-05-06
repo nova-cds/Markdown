@@ -84,7 +84,7 @@ export const TitleBar: React.FC = () => {
       >
         <div className="flex-1 flex items-end h-full min-w-0">
           {tabs.length === 0 ? (
-            <div className="flex items-center h-full px-4">
+            <div className="flex items-center h-full px-4" onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick(); }}>
               <span className="text-sm text-[var(--editor-text-muted)] flex items-center gap-2">
                 <FileText size={14} />
                 MD Editor
@@ -114,6 +114,10 @@ export const TitleBar: React.FC = () => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveDocument(tabPath);
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      handleDoubleClick();
                     }}
                   >
                     {isActive && (
