@@ -4,7 +4,7 @@ import 'vditor/dist/index.css';
 import './vditor-styles.css';
 import '../../styles/embed.css';
 import { useEditorStore, useFileStore, useSettingsStore, EditorMode, PreviewMode } from '../../stores';
-import { useSaveToFile } from '../../hooks/useAutoSave';
+import { useSaveToFile, useSaveAsFile } from '../../hooks/useAutoSave';
 import { isTauriCached, waitForTauri } from '../../utils/platform';
 import { isLocalMdFile, resolveDocPath, readMdFileContent, getFileDisplayName, normalizePath, getFileName } from '../../utils/linkUtils';
 import { shouldRenderEmbed, processEmbedsInMarkdown, createEmbedContainer, createEmbedWarning, EmbedContext } from '../../utils/embedUtils';
@@ -290,6 +290,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
   const setPreviewMode = useEditorStore((state) => state.setPreviewMode);
   const docState = useEditorStore((state) => state.documents[path]);
   const saveToFile = useSaveToFile();
+  const saveAsFile = useSaveAsFile();
   const embedMaxDepth = useSettingsStore((state) => state.embedMaxDepth);
   const embedMaxCount = useSettingsStore((state) => state.embedMaxCount);
   const rootHandle = useFileStore((state) => state.rootHandle);
@@ -398,6 +399,83 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
     window.addEventListener('keydown', handleFindReplace, true);
     return () => window.removeEventListener('keydown', handleFindReplace, true);
   }, []);
+  
+  // Ctrl+S 快捷键 - 智能保存
+  useEffect(() => {
+    const handleSave = (e: KeyboardEvent) => {
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        saveToFile();
+      }
+    };
+    
+    window.addEventListener('keydown', handleSave, true);
+    return () => window.removeEventListener('keydown', handleSave, true);
+  }, [saveToFile]);
+  
+  // Ctrl+Shift+S 快捷键 - 强制另存为
+  useEffect(() => {
+    const handleSaveAs = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        saveAsFile();
+      }
+    };
+    
+    window.addEventListener('keydown', handleSaveAs, true);
+    return () => window.removeEventListener('keydown', handleSaveAs, true);
+  }, [saveAsFile]);
+  
+  // 编辑区拖放文件处理
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const handleDrop = async (e: DragEvent) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      
+      // 检查是否是MD文件
+      const mdFiles = Array.from(files).filter(
+        file => file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')
+      );
+      
+      if (mdFiles.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        for (const file of mdFiles) {
+          const content = await file.text();
+          openDocument(`file://${file.name}`, content, false);
+        }
+      }
+    };
+    
+    const handleDragOver = (e: DragEvent) => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const hasMdFile = Array.from(files).some(
+          file => file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')
+        );
+        if (hasMdFile) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    };
+    
+    container.addEventListener('drop', handleDrop, true);
+    container.addEventListener('dragover', handleDragOver, true);
+    
+    return () => {
+      container.removeEventListener('drop', handleDrop, true);
+      container.removeEventListener('dragover', handleDragOver, true);
+    };
+  }, [openDocument]);
 
   const handleLocalMdLinkClick = useCallback(async (href: string): Promise<boolean> => {
     if (!href || !isLocalMdFile(href)) {
@@ -499,7 +577,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
         enable: savedOutlineVisible,
         position: 'right',
       },
-      cdn: 'https://unpkg.com/vditor@3.11.2',
+      cdn: VDITOR_CDN,
       preview: {
         markdown: {
           codeBlockPreview: true,

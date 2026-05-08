@@ -401,25 +401,23 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
             <button
               onClick={matchCount > 0 ? handleFindNext : handleFind}
               disabled={!findText}
-              className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="flex-1 px-3 py-2 bg-[var(--editor-code-bg)] text-[var(--editor-text)] border border-[var(--editor-border)] rounded-md text-sm font-medium hover:bg-[var(--editor-surface)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {matchCount > 0 ? '查找下一个' : '查找'}
             </button>
             
-            {/* 替换按钮 */}
             <button
               onClick={handleReplace}
               disabled={!findText}
-              className="flex-1 px-3 py-2 bg-green-500 text-white rounded-md text-sm font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="flex-1 px-3 py-2 bg-[var(--editor-code-bg)] text-[var(--editor-text)] border border-[var(--editor-border)] rounded-md text-sm font-medium hover:bg-[var(--editor-surface)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               替换
             </button>
             
-            {/* 全部替换按钮 */}
             <button
               onClick={handleReplaceAll}
               disabled={!findText}
-              className="flex-1 px-3 py-2 bg-orange-500 text-white rounded-md text-sm font-medium hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="flex-1 px-3 py-2 bg-[var(--accent-500)] text-white rounded-md text-sm font-medium hover:bg-[var(--accent-600)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               全部替换
             </button>

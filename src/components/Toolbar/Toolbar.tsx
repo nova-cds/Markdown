@@ -78,6 +78,14 @@ export const Toolbar: React.FC = () => {
             title={theme === 'dark' ? '切换到浅色模式' : '切换到暗色模式'}
             onClick={toggleTheme}
           />
+
+          <div className="w-px h-5 bg-[var(--editor-border)] mx-1" />
+
+          <ToolbarButton
+            icon={Settings}
+            title="设置"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
+          />
         </div>
       </div>
 

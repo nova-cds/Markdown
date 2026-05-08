@@ -1,7 +1,8 @@
 import React from 'react';
 import { useEditorStore } from '../../stores';
 import { useSaveToFile, getFileName } from '../../hooks/useAutoSave';
-import { FileText, X, Save } from 'lucide-react';
+import { FileText, X, Save, Plus } from 'lucide-react';
+import { useFileOperations } from '../../hooks/useFileOperations';
 
 export const TabBar: React.FC = () => {
   const tabs = useEditorStore((state) => state.tabs);
@@ -10,6 +11,7 @@ export const TabBar: React.FC = () => {
   const setActiveDocument = useEditorStore((state) => state.setActiveDocument);
   const closeDocument = useEditorStore((state) => state.closeDocument);
   const saveToFile = useSaveToFile();
+  const { handleNewFile } = useFileOperations();
 
   if (tabs.length === 0) {
     return (
@@ -36,7 +38,7 @@ export const TabBar: React.FC = () => {
             <div
               key={tabPath}
               className={`
-                group relative flex items-center h-9 px-3 cursor-pointer
+                group relative flex items-center h-9 px-3 cursor-pointer rounded-t-lg
                 transition-all duration-[var(--transition-fast)]
                 min-w-[120px] max-w-[180px]
                 ${isActive
@@ -93,22 +95,24 @@ export const TabBar: React.FC = () => {
         })}
       </div>
 
+      {/* 新建按钮 */}
+      <button
+        className="w-9 h-9 flex items-center justify-center text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] hover:bg-[var(--tab-active-bg)] transition-colors"
+        onClick={handleNewFile}
+        title="新建文档"
+      >
+        <Plus size={16} />
+      </button>
+
       {/* 右侧操作区 */}
       {activeDocPath && (
         <div className="flex items-center h-9 px-2 gap-1">
           <button
-            className={`
-              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium
-              bg-[var(--accent-500)] text-white
-              hover:bg-[var(--accent-600)]
-              transition-all duration-[var(--transition-fast)]
-              shadow-sm hover:shadow
-            `}
+            className="w-9 h-9 flex items-center justify-center text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] hover:bg-[var(--tab-active-bg)] transition-colors"
             onClick={saveToFile}
             title="保存到本地文件 (Ctrl+S)"
           >
-            <Save size={14} />
-            <span>保存</span>
+            <Save size={16} />
           </button>
         </div>
       )}

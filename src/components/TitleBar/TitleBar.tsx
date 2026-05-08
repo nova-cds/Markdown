@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useEditorStore, useSettingsStore } from '../../stores';
 import { useSaveToFile, getFileName } from '../../hooks/useAutoSave';
 import { isTauriCached } from '../../utils/platform';
-import { FileText, X, Save, Moon, Sun, Keyboard, Minus, Square, X as CloseIcon, LucideIcon } from 'lucide-react';
+import { FileText, X, Save, Moon, Sun, Keyboard, Settings, Minus, Square, X as CloseIcon, LucideIcon, Plus } from 'lucide-react';
+import { useFileOperations } from '../../hooks/useFileOperations';
 
 declare global {
   interface Window {
@@ -32,6 +33,7 @@ export const TitleBar: React.FC = () => {
   const closeDocument = useEditorStore((state) => state.closeDocument);
   const saveToFile = useSaveToFile();
   const { theme, toggleTheme } = useSettingsStore();
+  const { handleNewFile } = useFileOperations();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
 
@@ -96,19 +98,16 @@ export const TitleBar: React.FC = () => {
                       transition-all duration-[var(--transition-fast)]
                       flex-1 min-w-[80px] max-w-[180px]
                       ${isActive
-                        ? 'bg-[var(--editor-bg)] text-[var(--editor-text)]'
-                        : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-active-bg)] hover:text-[var(--editor-text)]'
+                        ? 'bg-[var(--editor-bg)] text-[var(--editor-text)] shadow-[0_-2px_8px_rgba(0,0,0,0.1)]'
+                        : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-hover-bg)] hover:text-[var(--editor-text)]'
                       }
                     `}
+                    style={{ borderRadius: '12px 12px 0 0' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       setActiveDocument(tabPath);
                     }}
                   >
-                    {isActive && (
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--accent-500)]" />
-                    )}
-
                     <FileText
                       size={14}
                       className={`mr-1.5 flex-shrink-0 ${isActive ? 'text-[var(--accent-500)]' : 'text-[var(--editor-text-muted)]'}`}
@@ -140,6 +139,14 @@ export const TitleBar: React.FC = () => {
                   </div>
                 );
               })}
+              {/* Plus按钮放在tabs右侧（Win11记事本风格） */}
+              <button
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] hover:bg-[var(--tab-active-bg)] transition-colors mb-0.5"
+                onClick={(e) => { e.stopPropagation(); handleNewFile(); }}
+                title="新建文档"
+              >
+                <Plus size={16} />
+              </button>
             </div>
           )}
         </div>
@@ -151,14 +158,14 @@ export const TitleBar: React.FC = () => {
         />
 
         <div className="flex items-center h-full flex-shrink-0">
+
           {activeDocPath && (
             <button
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-[var(--accent-500)] text-white hover:bg-[var(--accent-600)] transition-all mx-1"
+              className="w-9 h-9 flex items-center justify-center text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] hover:bg-[var(--tab-active-bg)] transition-colors"
               onClick={(e) => { e.stopPropagation(); saveToFile(); }}
-              title="保存 (Ctrl+S)"
+              title="保存到本地文件 (Ctrl+S)"
             >
-              <Save size={12} />
-              <span className="hidden sm:inline">保存</span>
+              <Save size={16} />
             </button>
           )}
 
@@ -172,6 +179,12 @@ export const TitleBar: React.FC = () => {
             icon={theme === 'dark' ? Sun : Moon}
             title={theme === 'dark' ? '浅色模式' : '暗色模式'}
             onClick={toggleTheme}
+          />
+
+          <TitleBarButton
+            icon={Settings}
+            title="设置"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-settings'))}
           />
 
           {isTauriCached() && (

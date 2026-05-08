@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Layout } from './components/Layout';
 import { useTheme } from './hooks';
 import { waitForTauri } from './utils/platform';
+import { useEditorStore } from './stores';
 
 function App() {
   const [isReady, setIsReady] = useState(false);
@@ -16,6 +17,36 @@ function App() {
     };
     
     init();
+  }, []);
+  
+  useEffect(() => {
+    const handleGlobalDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const files = e.dataTransfer?.files;
+      if (!files) return;
+      
+      const { openDocument } = useEditorStore.getState();
+      for (const file of Array.from(files)) {
+        if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')) {
+          const content = await file.text();
+          openDocument(`file://${file.name}`, content, false);
+        }
+      }
+    };
+    
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    document.addEventListener('drop', handleGlobalDrop);
+    document.addEventListener('dragover', handleDragOver);
+    
+    return () => {
+      document.removeEventListener('drop', handleGlobalDrop);
+      document.removeEventListener('dragover', handleDragOver);
+    };
   }, []);
   
   if (!isReady) {

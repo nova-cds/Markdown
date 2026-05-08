@@ -179,39 +179,90 @@ export function useAutoSave(): void {
 }
 
 /**
+ * 另存为功能 Hook
+ */
+export function useSaveAsFile() {
+  return useCallback(async () => {
+    const { activeDocPath, documents, updateFilePath, saveDocument } = useEditorStore.getState();
+    if (!activeDocPath) return;
+    const doc = documents[activeDocPath];
+    if (!doc) return;
+    
+    const defaultName = doc.content.split('\n')[0].replace(/^#+\s*/, '').trim() || '未命名';
+    const fileName = `${defaultName}.md`;
+    
+    if (isTauriCached()) {
+      try {
+        const { save } = await import('@tauri-apps/plugin-dialog');
+        const filePath = await save({
+          defaultPath: fileName,
+          filters: [{ name: 'Markdown', extensions: ['md'] }]
+        });
+        
+        if (filePath) {
+          const { writeTextFile } = await import('@tauri-apps/plugin-fs');
+          await writeTextFile(filePath, doc.content);
+          updateFilePath(activeDocPath, filePath);
+          saveDocument(activeDocPath);
+        }
+      } catch (e) {
+        console.error('Save as failed:', e);
+      }
+    } else {
+      try {
+        if ('showSaveFilePicker' in window) {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'] } }]
+          });
+          
+          const writable = await handle.createWritable();
+          await writable.write(doc.content);
+          await writable.close();
+          
+          updateFilePath(activeDocPath, handle.name);
+          saveDocument(activeDocPath);
+        } else {
+          saveFileToLocal(fileName, doc.content);
+          saveDocument(activeDocPath);
+        }
+      } catch (e) {
+        console.error('Save as failed:', e);
+      }
+    }
+  }, []);
+}
+
+/**
  * 手动保存到文件下载
  */
 export function useSaveToFile() {
-  const activeDocPath = useEditorStore((state) => state.activeDocPath);
-  const saveDocument = useEditorStore((state) => state.saveDocument);
-
+  const saveAsFile = useSaveAsFile();
+  
   return useCallback(async () => {
+    const { activeDocPath, documents } = useEditorStore.getState();
     if (!activeDocPath) return;
-    
-    // 使用 getState() 避免订阅
-    const { documents } = useEditorStore.getState();
     const doc = documents[activeDocPath];
     if (!doc) return;
-
-    const fileName = getFileName(activeDocPath);
     
-    // 尝试写入文件系统
-    if (activeDocPath.startsWith('file://')) {
-      const written = await writeToFileSystem(activeDocPath, doc.content);
-      if (written) {
-        saveDocument(activeDocPath);
-        return;
-      }
+    // 智能判断：新建文档或没有filePath时，执行另存为
+    if (doc.isNewFile || !doc.filePath) {
+      await saveAsFile();
+      return;
+    }
+    
+    // 已保存文档，保存到原路径
+    const written = await writeToFileSystem(doc.filePath, doc.content);
+    if (written) {
+      const { saveDocument } = useEditorStore.getState();
+      saveDocument(activeDocPath);
+      return;
     }
     
     // 无法写入文件系统，下载文件
+    const fileName = getFileName(activeDocPath);
     saveFileToLocal(fileName, doc.content);
-    
-    // 清理localStorage中的副本，避免冲突
-    const savedDocs = JSON.parse(localStorage.getItem(STORAGE_KEY_DOCS) || '{}');
-    delete savedDocs[activeDocPath];
-    localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(savedDocs));
-    
+    const { saveDocument } = useEditorStore.getState();
     saveDocument(activeDocPath);
-  }, [activeDocPath, saveDocument]);
+  }, [saveAsFile]);
 }

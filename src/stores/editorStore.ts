@@ -13,6 +13,7 @@ export interface DocumentState {
   editorMode: EditorMode;
   scrollPosition: number;
   previewMode: PreviewMode;
+  filePath?: string;
 }
 
 type SaveStatus = 'saved' | 'saving' | 'unsaved';
@@ -78,6 +79,7 @@ interface EditorStateStore {
   setEditorMode: (path: string, mode: EditorMode) => void;
   setScrollPosition: (path: string, position: number) => void;
   setPreviewMode: (path: string, mode: PreviewMode) => void;
+  updateFilePath: (docPath: string, filePath: string) => void;
 }
 
 export const useEditorStore = create<EditorStateStore>((set, get) => ({
@@ -105,6 +107,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
             editorMode: 'ir',
             scrollPosition: 0,
             previewMode: 'editor',
+            filePath: isNew ? undefined : path.replace(/^file:\/\//, ''),
           },
         },
       });
@@ -117,6 +120,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
             content,
             isModified: isNew || false,
             isNewFile: isNew || false,
+            filePath: isNew ? undefined : path.replace(/^file:\/\//, ''),
           },
         },
       });
@@ -284,5 +288,19 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
         },
       });
     }
+  },
+  
+  updateFilePath: (docPath: string, filePath: string) => {
+    const { documents } = get();
+    set({
+      documents: {
+        ...documents,
+        [docPath]: {
+          ...documents[docPath],
+          filePath,
+          isNewFile: false,
+        },
+      },
+    });
   },
 }));

@@ -28,6 +28,8 @@
   --accent-400: #60a5fa;
   --accent-500: #3b82f6;
   --accent-600: #2563eb;
+  --accent-700: #1d4ed8;
+  --accent-800: #1e40af;
 
   /* 成功色 */
   --success-500: #22c55e;
@@ -74,6 +76,7 @@
   --tab-bg: #f8fafc;
   --tab-active-bg: #ffffff;
   --tab-inactive-bg: #f1f5f9;
+  --tab-hover-bg: #e2e8f0;
   --tab-border: #e2e8f0;
   --tab-active-indicator: #3b82f6;
 
@@ -137,7 +140,8 @@
   /* 标签栏颜色 */
   --tab-bg: #1e293b;
   --tab-active-bg: #0f172a;
-  --tab-inactive-bg: #1e293b;
+  --tab-inactive-bg: #1a2332;
+  --tab-hover-bg: #243044;
   --tab-border: #334155;
   --tab-active-indicator: #60a5fa;
 

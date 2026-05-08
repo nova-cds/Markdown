@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSettingsStore, EMBED_MAX_DEPTH_MIN, EMBED_MAX_DEPTH_MAX, EMBED_MAX_COUNT_MIN, EMBED_MAX_COUNT_MAX } from '../../stores/settingsStore';
-import { Settings, X, Sun, Moon, Monitor, Image, Save, Info, FileText } from 'lucide-react';
+import { X, Sun, Moon, Monitor, Image, Save, Info, FileText } from 'lucide-react';
+import { version } from '../../../package.json';
 
 export const SettingsPanel: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenSettings = () => setIsOpen(true);
+    window.addEventListener('open-settings', handleOpenSettings);
+    return () => window.removeEventListener('open-settings', handleOpenSettings);
+  }, []);
   const {
     theme,
     imageDirectory,
@@ -54,19 +61,6 @@ export const SettingsPanel: React.FC = () => {
 
   return (
     <>
-      {/* Settings trigger button */}
-      <button
-        className="fixed bottom-4 right-4 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-[var(--sidebar-surface)] border border-[var(--sidebar-border)] shadow-lg hover:bg-[var(--sidebar-hover)] hover:shadow-xl transition-all duration-[var(--transition-fast)] group"
-        onClick={() => setIsOpen(true)}
-        aria-label="打开设置"
-      >
-        <Settings
-          size={20}
-          className="text-[var(--editor-text-secondary)] group-hover:text-[var(--editor-text)] group-hover:rotate-90 transition-all duration-300"
-        />
-      </button>
-
-      {/* Settings drawer */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex animate-fade-in">
           {/* Backdrop */}
@@ -255,13 +249,13 @@ export const SettingsPanel: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-semibold text-[var(--editor-text)]">MD Editor</h4>
-                      <p className="text-xs text-[var(--editor-text-muted)]">版本 0.1.0</p>
+                      <p className="text-xs text-[var(--editor-text-muted)]">版本 {version}</p>
                     </div>
                   </div>
                   <div className="text-xs text-[var(--editor-text-secondary)] space-y-2">
                     <p className="font-medium text-[var(--editor-text)]">技术栈</p>
                     <div className="flex flex-wrap gap-2">
-                      {['React 18', 'TypeScript', 'TailwindCSS', 'Tauri', 'ProseMirror', 'Zustand'].map((tech) => (
+                      {['React 18', 'TypeScript', 'TailwindCSS', 'Tauri 2', 'Vditor', 'Zustand'].map((tech) => (
                         <span
                           key={tech}
                           className="px-2 py-1 bg-[var(--editor-bg)] rounded-md text-[var(--editor-text-muted)]"

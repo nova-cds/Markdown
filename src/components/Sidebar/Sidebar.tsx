@@ -144,24 +144,6 @@ export const Sidebar: React.FC = () => {
     }
   }, [rootPath, refreshTree]);
 
-  // 拖放文件支持
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-
-    for (const file of files) {
-      if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')) {
-        const content = await file.text();
-        const docPath = `file://${file.name}`;
-        openDocument(docPath, content, false);
-      }
-    }
-  }, [openDocument]);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
   // 点击文件打开
   const handleFileClick = async (node: TreeNode) => {
     // 设置选中的目录（用于新建文件/文件夹的基准目录）
@@ -760,8 +742,6 @@ export const Sidebar: React.FC = () => {
   return (
     <div
       className="h-full bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col select-none"
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
     >
       {/* Header */}
       <div className="h-10 flex items-center justify-between px-3 border-b border-[var(--sidebar-border)]">

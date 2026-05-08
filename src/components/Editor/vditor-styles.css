@@ -298,6 +298,26 @@
   overflow-x: auto !important;
 }
 
+/* PlantUML 图表样式 */
+.vditor .vditor-ir pre.vditor-reset .language-plantuml,
+.vditor .vditor-content .vditor-reset .language-plantuml {
+  background-color: transparent !important;
+  margin-bottom: 16px !important;
+  overflow-x: auto !important;
+}
+
+/* PlantUML 生成的图片/SVG居中显示 */
+.vditor .vditor-ir pre.vditor-reset .language-plantuml img,
+.vditor .vditor-content .vditor-reset .language-plantuml img,
+.vditor .vditor-ir pre.vditor-reset .language-plantuml svg,
+.vditor .vditor-content .vditor-reset .language-plantuml svg {
+  display: block !important;
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+}
+
 .dark .vditor .vditor-ir pre.vditor-reset .vditor-toc,
 .dark .vditor .vditor-content .vditor-reset .vditor-toc {
   background-color: var(--editor-code-bg, #1e293b) !important;
