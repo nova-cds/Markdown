@@ -287,7 +287,6 @@ export const TitleBar: React.FC = () => {
         <div 
           className="w-20 h-full flex-shrink-0"
           data-tauri-drag-region
-          onDoubleClick={handleDoubleClick}
         />
 
         <div className="flex items-center h-full flex-shrink-0">

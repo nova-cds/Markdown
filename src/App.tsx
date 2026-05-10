@@ -22,12 +22,22 @@ function App() {
   
   useEffect(() => {
     const handleGlobalDrop = async (e: DragEvent) => {
+      const target = e.target as HTMLElement;
+      
       if (isTauriCached()) {
+        if (target.closest('.pane-leaf')) {
+          return;
+        }
+        
+        const types = e.dataTransfer?.types || [];
+        if (types.includes('application/x-file-path') || types.includes('text/plain')) {
+          return;
+        }
+        
         e.preventDefault();
         return;
       }
       
-      const target = e.target as HTMLElement;
       if (target.closest('.pane-leaf')) {
         return;
       }
@@ -92,30 +102,34 @@ function App() {
               const tabPath = targetPane.getAttribute('data-tab-path');
               
               if (paneId && tabPath) {
-                const { ensureDocument } = useEditorStore.getState();
                 const splitStore = await import('./stores').then(m => m.useSplitStore.getState());
-                const { setPaneDocument, setActivePane, getDocumentsInPanes } = splitStore;
+                const paneCount = splitStore.getPaneCount(tabPath);
                 
-                const existingDocs = getDocumentsInPanes(tabPath);
-                
-                for (const path of paths) {
-                  if (path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.txt')) {
-                    const docPath = `file://${path}`;
-                    
-                    if (existingDocs.includes(docPath)) continue;
-                    
-                    try {
-                      const { readTextFile } = await import('@tauri-apps/plugin-fs');
-                      const content = await readTextFile(path);
-                      ensureDocument(docPath, content, false);
-                      setPaneDocument(tabPath, paneId, docPath);
-                      setActivePane(tabPath, paneId);
-                    } catch (err) {
-                      console.error('在窗格中打开拖放文件失败:', err);
+                if (paneCount > 1) {
+                  const { ensureDocument } = useEditorStore.getState();
+                  const { setPaneDocument, setActivePane, getDocumentsInPanes } = splitStore;
+                  
+                  const existingDocs = getDocumentsInPanes(tabPath);
+                  
+                  for (const path of paths) {
+                    if (path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.txt')) {
+                      const docPath = `file://${path}`;
+                      
+                      if (existingDocs.includes(docPath)) continue;
+                      
+                      try {
+                        const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                        const content = await readTextFile(path);
+                        ensureDocument(docPath, content, false);
+                        setPaneDocument(tabPath, paneId, docPath);
+                        setActivePane(tabPath, paneId);
+                      } catch (err) {
+                        console.error('在窗格中打开拖放文件失败:', err);
+                      }
                     }
                   }
+                  return;
                 }
-                return;
               }
             }
             
