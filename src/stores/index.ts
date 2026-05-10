@@ -6,3 +6,21 @@ export { useSettingsStore } from './settingsStore';
 export { useUpdateStore } from './updateStore';
 export { useSplitStore } from './splitStore';
 export type { Pane, PaneLeaf, PaneSplit, SplitDirection, TabSplitState } from './splitStore';
+
+let internalDragData: string | null = null;
+
+export const setInternalDragData = (data: string | null) => {
+  internalDragData = data;
+};
+
+export const getInternalDragData = () => {
+  const data = internalDragData;
+  internalDragData = null;
+  return data;
+};
+
+export const peekInternalDragData = () => internalDragData;
+
+export const clearInternalDragData = () => {
+  internalDragData = null;
+};

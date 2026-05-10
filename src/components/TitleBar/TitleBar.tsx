@@ -63,13 +63,6 @@ export const TitleBar: React.FC = () => {
     }
   }, []);
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    const win = getTauriWindow();
-    if (win) {
-      win.toggleMaximize();
-    }
-  };
-
   const handleMinimize = () => {
     getTauriWindow()?.minimize();
   };
@@ -202,7 +195,6 @@ export const TitleBar: React.FC = () => {
       <div 
         className="h-10 bg-[var(--titlebar-bg)] border-b border-[var(--editor-border)] flex items-center select-none"
         data-tauri-drag-region
-        onDoubleClick={handleDoubleClick}
       >
         <div className="flex-1 flex items-end h-full min-w-0" data-tauri-drag-region>
           {tabs.length === 0 ? (

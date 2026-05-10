@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { useFileStore, useEditorStore, useSplitStore, TreeNode } from '../../stores';
+import { useFileStore, useEditorStore, useSplitStore, TreeNode, setInternalDragData, clearInternalDragData } from '../../stores';
 import { useFileOperations } from '../../hooks/useFileOperations';
 import { isTauriCached } from '../../utils/platform';
 import { useRecentFilesStore, formatTime } from '../../stores/recentFilesStore';
@@ -723,6 +723,10 @@ export const Sidebar: React.FC = () => {
               e.dataTransfer.setData('text/plain', docPath);
               e.dataTransfer.setData('application/x-file-path', docPath);
               e.dataTransfer.effectAllowed = 'copy';
+              setInternalDragData(docPath);
+            }}
+            onDragEnd={() => {
+              clearInternalDragData();
             }}
             onClick={() => {
               if (node.isDir) {
