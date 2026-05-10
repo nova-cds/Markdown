@@ -23,6 +23,18 @@
   transition: border-color 0.15s ease;
 }
 
+.pane-leaf-wrapper {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pane-leaf-wrapper > .pane-leaf,
+.pane-leaf-wrapper > .pane-container {
+  flex: 1;
+}
+
 .pane-leaf.active {
   border-color: var(--accent-500);
 }

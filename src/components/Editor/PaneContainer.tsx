@@ -68,10 +68,13 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
     }
   }, [tabPath, splitState, initTabSplitState]);
   
-  const handlePaneClick = useCallback((paneId: string) => {
+  const handlePaneClick = useCallback((paneId: string, docPath: string | null) => {
     setActiveTab(tabPath);
     if (splitState && paneId !== splitState.activePaneId) {
       setActivePane(tabPath, paneId);
+    }
+    if (docPath) {
+      useEditorStore.setState({ activeDocPath: docPath });
     }
   }, [tabPath, splitState, setActivePane, setActiveTab]);
   
@@ -126,7 +129,13 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
   }, [tabPath, contextMenu.paneId, setPaneDocument]);
   
   const handleClosePane = useCallback(() => {
-    closePane(tabPath, contextMenu.paneId);
+    const newActiveDocPath = closePane(tabPath, contextMenu.paneId);
+    if (newActiveDocPath) {
+      useEditorStore.setState({ 
+        activeDocPath: newActiveDocPath,
+        activeTabPath: tabPath
+      });
+    }
   }, [tabPath, contextMenu.paneId, closePane]);
   
   const handleDragOver = useCallback((e: React.DragEvent, paneId: string) => {
@@ -145,8 +154,6 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
     e.stopPropagation();
     setDragState({ isOver: false, paneId: '' });
     
-    let docPath: string | null = null;
-    
     const types = e.dataTransfer.types;
     let internalDragData: string | null = null;
     if (types.includes('application/x-file-path')) {
@@ -155,25 +162,11 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
       internalDragData = e.dataTransfer.getData('text/plain');
     }
     
-    if (internalDragData && internalDragData.startsWith('file://')) {
-      docPath = internalDragData;
-    } else {
-      const files = Array.from(e.dataTransfer.files).filter(f => 
-        f.name.endsWith('.md') || f.name.endsWith('.markdown') || f.name.endsWith('.txt')
-      );
-      if (files.length > 0) {
-        docPath = `file://${files[0].name}`;
-      }
-    }
-    
-    if (!docPath) return;
-    
-    const existingDocs = getDocumentsInPanes(tabPath);
-    if (existingDocs.includes(docPath)) return;
-    
+    let docPath: string | null = null;
     let content: string | null = null;
     
     if (internalDragData && internalDragData.startsWith('file://')) {
+      docPath = internalDragData;
       const realPath = internalDragData.replace(/^file:\/\//, '');
       try {
         if (isTauriCached()) {
@@ -195,15 +188,21 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
         f.name.endsWith('.md') || f.name.endsWith('.markdown') || f.name.endsWith('.txt')
       );
       if (files.length > 0) {
-        content = await files[0].text();
+        const file = files[0];
+        const filePath = (file as any).path || file.name;
+        docPath = `file://${filePath}`;
+        content = await file.text();
       }
     }
     
-    if (content !== null) {
-      ensureDocument(docPath, content, false);
-      setPaneDocument(tabPath, paneId, docPath);
-      setActivePane(tabPath, paneId);
-    }
+    if (!docPath || content === null) return;
+    
+    const existingDocs = getDocumentsInPanes(tabPath);
+    if (existingDocs.includes(docPath)) return;
+    
+    ensureDocument(docPath, content, false);
+    setPaneDocument(tabPath, paneId, docPath);
+    setActivePane(tabPath, paneId);
   }, [tabPath, ensureDocument, setPaneDocument, setActivePane, getFileHandle, getDocumentsInPanes]);
   
   const handleDividerMouseDown = useCallback((
@@ -213,6 +212,10 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
     currentRatio: number
   ) => {
     e.preventDefault();
+    const dividerElement = e.currentTarget;
+    const container = dividerElement.parentElement;
+    if (!container) return;
+    
     draggingRef.current = {
       splitPaneId,
       startX: e.clientX,
@@ -225,9 +228,6 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
       if (!draggingRef.current) return;
       
       const { startX, startY, startRatio, direction, splitPaneId: id } = draggingRef.current;
-      
-      const container = (e.target as HTMLElement).closest('.pane-container');
-      if (!container) return;
       
       const rect = container.getBoundingClientRect();
       
@@ -244,15 +244,21 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
         newRatio = startRatio + ratioDelta;
       }
       
+      newRatio = Math.max(0.1, Math.min(0.9, newRatio));
+      
       setSplitRatio(tabPath, id, newRatio);
     };
     
     const handleMouseUp = () => {
+      if (draggingRef.current) {
+        dividerElement.classList.remove('dragging');
+      }
       draggingRef.current = null;
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
     
+    dividerElement.classList.add('dragging');
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   }, [tabPath, setSplitRatio]);
@@ -273,14 +279,14 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
         <div
           key={pane.id}
           className={`pane-leaf ${isActive && paneCount > 1 ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
-          onClick={() => handlePaneClick(pane.id)}
+          onClick={() => handlePaneClick(pane.id, pane.docPath)}
           onContextMenu={(e) => handleContextMenu(e, pane.id, pane.docPath)}
           onDragOver={(e) => handleDragOver(e, pane.id)}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, pane.id)}
         >
           {pane.docPath ? (
-            <VditorEditor key={pane.docPath} path={pane.docPath} />
+            <VditorEditor key={pane.docPath} path={pane.docPath} isInPane={paneCount > 1} />
           ) : (
             <PaneWelcome
               onNewFile={() => {
@@ -302,18 +308,28 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
     const splitNode = pane as PaneSplit;
     const [firstChild, secondChild] = splitNode.children;
     const isActive = splitNode.id === activePaneId;
+    const firstStyle = splitNode.direction === 'vertical' 
+      ? { flex: `0 0 calc(${splitNode.ratio * 100}% - 2px)` }
+      : { flex: `0 0 calc(${splitNode.ratio * 100}% - 2px)` };
+    const secondStyle = splitNode.direction === 'vertical'
+      ? { flex: `0 0 calc(${(1 - splitNode.ratio) * 100}% - 2px)` }
+      : { flex: `0 0 calc(${(1 - splitNode.ratio) * 100}% - 2px)` };
     
     return (
       <div
         key={splitNode.id}
         className={`pane-container ${splitNode.direction} flex-1 min-w-0 min-h-0`}
       >
-        {renderPane(firstChild)}
+        <div style={firstStyle} className="pane-leaf-wrapper">
+          {renderPane(firstChild)}
+        </div>
         <div
           className={`pane-divider ${splitNode.direction} ${isActive ? 'active' : ''}`}
           onMouseDown={(e) => handleDividerMouseDown(e, splitNode.id, splitNode.direction, splitNode.ratio)}
         />
-        {renderPane(secondChild)}
+        <div style={secondStyle} className="pane-leaf-wrapper">
+          {renderPane(secondChild)}
+        </div>
       </div>
     );
   };

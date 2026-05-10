@@ -30,6 +30,7 @@ const getTauriWindow = () => {
 export const TitleBar: React.FC = () => {
   const tabs = useEditorStore((state) => state.tabs);
   const activeDocPath = useEditorStore((state) => state.activeDocPath);
+  const activeTabPath = useEditorStore((state) => state.activeTabPath);
   const documents = useEditorStore((state) => state.documents);
   const setActiveDocument = useEditorStore((state) => state.setActiveDocument);
   const closeDocument = useEditorStore((state) => state.closeDocument);
@@ -37,12 +38,13 @@ export const TitleBar: React.FC = () => {
   const { theme, toggleTheme } = useSettingsStore();
   const { handleNewFile } = useFileOperations();
   const { hasUpdate, latestVersion } = useUpdateStore();
-  const canSplit = useSplitStore((state) => activeDocPath ? state.canSplit(activeDocPath) : false);
+  const canSplit = useSplitStore((state) => activeTabPath ? state.canSplit(activeTabPath) : false);
   const splitPane = useSplitStore((state) => state.splitPane);
   const getCurrentState = useSplitStore((state) => state.getCurrentState);
   const getDocumentsInPanes = useSplitStore((state) => state.getDocumentsInPanes);
   const cleanupTabSplitState = useSplitStore((state) => state.cleanupTabSplitState);
   const getPaneCount = useSplitStore((state) => state.getPaneCount);
+  const getActiveDocPath = useSplitStore((state) => state.getActiveDocPath);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -81,28 +83,82 @@ export const TitleBar: React.FC = () => {
   };
 
   const handleSplitVertical = () => {
-    if (!activeDocPath) return;
-    const splitState = getCurrentState(activeDocPath);
+    if (!activeTabPath) return;
+    const splitState = getCurrentState(activeTabPath);
     if (splitState && canSplit) {
-      splitPane(activeDocPath, splitState.activePaneId, 'vertical');
+      splitPane(activeTabPath, splitState.activePaneId, 'vertical');
     }
   };
 
   const handleSplitHorizontal = () => {
-    if (!activeDocPath) return;
-    const splitState = getCurrentState(activeDocPath);
+    if (!activeTabPath) return;
+    const splitState = getCurrentState(activeTabPath);
     if (splitState && canSplit) {
-      splitPane(activeDocPath, splitState.activePaneId, 'horizontal');
+      splitPane(activeTabPath, splitState.activePaneId, 'horizontal');
     }
   };
 
   const handleCloseTab = (tabPath: string) => {
     const paneCount = getPaneCount(tabPath);
-    if (paneCount > 1) {
-      const docs = getDocumentsInPanes(tabPath);
+    const splitState = getCurrentState(tabPath);
+    const docsInPanes = getDocumentsInPanes(tabPath);
+    
+    const hasMultiplePanes = paneCount > 1;
+    const hasMultipleDocsInPanes = docsInPanes.length > 1;
+    const hasOtherDocsInPanes = docsInPanes.length === 1 && docsInPanes[0] !== tabPath;
+    
+    const allTabs = useEditorStore.getState().tabs;
+    let isDocInOtherSplit = false;
+    for (const otherTab of allTabs) {
+      if (otherTab !== tabPath && getPaneCount(otherTab) > 1) {
+        const docsInOther = getDocumentsInPanes(otherTab);
+        if (docsInOther.includes(tabPath)) {
+          isDocInOtherSplit = true;
+          break;
+        }
+      }
+    }
+    
+    if (hasMultiplePanes || hasMultipleDocsInPanes) {
+      const docsToClose = docsInPanes.length > 0 ? docsInPanes : [tabPath];
       setPendingCloseTab(tabPath);
-      setPendingCloseDocuments(docs);
+      setPendingCloseDocuments(docsToClose);
       setShowCloseConfirm(true);
+    } else if (hasOtherDocsInPanes) {
+      const docPath = docsInPanes[0];
+      const { documents } = useEditorStore.getState();
+      if (documents[docPath]) {
+        const { [docPath]: _, ...restDocs } = documents;
+        useEditorStore.setState({ documents: restDocs });
+      }
+      closeDocument(tabPath);
+      cleanupTabSplitState(tabPath);
+      
+      const { tabs } = useEditorStore.getState();
+      if (tabs.length === 0) {
+        useEditorStore.setState({ activeDocPath: null, activeTabPath: null });
+      }
+    } else if (isDocInOtherSplit) {
+      const { tabs, activeDocPath, activeTabPath } = useEditorStore.getState();
+      const newTabs = tabs.filter((t) => t !== tabPath);
+      let newActivePath = activeDocPath;
+      let newActiveTabPath = activeTabPath;
+      if (activeDocPath === tabPath || activeTabPath === tabPath) {
+        const currentIndex = tabs.indexOf(tabPath);
+        if (newTabs.length > 0) {
+          newActivePath = newTabs[Math.min(currentIndex, newTabs.length - 1)];
+          newActiveTabPath = newActivePath;
+        } else {
+          newActivePath = null;
+          newActiveTabPath = null;
+        }
+      }
+      useEditorStore.setState({
+        tabs: newTabs,
+        activeDocPath: newActivePath,
+        activeTabPath: newActiveTabPath,
+      });
+      cleanupTabSplitState(tabPath);
     } else {
       closeDocument(tabPath);
       cleanupTabSplitState(tabPath);
@@ -112,7 +168,23 @@ export const TitleBar: React.FC = () => {
   const confirmCloseTab = () => {
     if (pendingCloseTab) {
       closeDocument(pendingCloseTab);
+      
+      for (const docPath of pendingCloseDocuments) {
+        if (docPath !== pendingCloseTab) {
+          const { documents, activeDocPath } = useEditorStore.getState();
+          if (documents[docPath]) {
+            const { [docPath]: _, ...restDocs } = documents;
+            useEditorStore.setState({ documents: restDocs });
+          }
+        }
+      }
+      
       cleanupTabSplitState(pendingCloseTab);
+      
+      const { tabs } = useEditorStore.getState();
+      if (tabs.length === 0) {
+        useEditorStore.setState({ activeDocPath: null, activeTabPath: null });
+      }
     }
     setShowCloseConfirm(false);
     setPendingCloseTab(null);
@@ -143,10 +215,14 @@ export const TitleBar: React.FC = () => {
           ) : (
             <div className="flex items-end h-full flex-1 min-w-0" data-tauri-drag-region>
               {tabs.map((tabPath) => {
-                const isActive = tabPath === activeDocPath;
-                const doc = documents[tabPath];
+                const isActive = tabPath === activeTabPath;
+                const paneCount = getPaneCount(tabPath);
+                const hasSplitState = getCurrentState(tabPath) !== null;
+                const activePaneDoc = hasSplitState && isActive ? getActiveDocPath(tabPath) : null;
+                const displayDocPath = activePaneDoc || tabPath;
+                const displayFileName = getFileName(displayDocPath);
+                const doc = documents[displayDocPath];
                 const isModified = doc?.isModified || false;
-                const fileName = getFileName(tabPath);
 
                 return (
                   <div
@@ -175,8 +251,8 @@ export const TitleBar: React.FC = () => {
                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-500)] mr-1.5 flex-shrink-0" />
                     )}
 
-                    <span className="text-sm truncate flex-1" title={fileName}>
-                      {fileName}
+                    <span className="text-sm truncate flex-1" title={displayFileName}>
+                      {displayFileName}
                     </span>
 
                     <button

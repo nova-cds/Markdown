@@ -203,7 +203,7 @@ interface SplitStore {
   
   initTabSplitState: (tabPath: string, docPath: string | null) => void;
   splitPane: (tabPath: string, paneId: string, direction: SplitDirection) => boolean;
-  closePane: (tabPath: string, paneId: string) => void;
+  closePane: (tabPath: string, paneId: string) => string | null;
   setPaneDocument: (tabPath: string, paneId: string, docPath: string | null) => void;
   setActivePane: (tabPath: string, paneId: string) => void;
   setSplitRatio: (tabPath: string, splitPaneId: string, ratio: number) => void;
@@ -296,17 +296,20 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
     return true;
   },
   
-  closePane: (tabPath: string, paneId: string) => {
+  closePane: (tabPath: string, paneId: string): string | null => {
     const state = get().tabSplitStates[tabPath];
-    if (!state) return;
+    if (!state) return null;
     
     const newTree = removePaneFromTree(state.paneTree, paneId);
     
-    if (!newTree) return;
+    if (!newTree) return null;
     
     const newActivePane = state.activePaneId === paneId
       ? getFirstLeafPane(newTree).id
       : state.activePaneId;
+    
+    const activePane = findPaneById(newTree, newActivePane);
+    const newActiveDocPath = activePane && activePane.type === 'leaf' ? activePane.docPath : null;
     
     set({
       tabSplitStates: {
@@ -318,6 +321,8 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
         },
       },
     });
+    
+    return newActiveDocPath;
   },
   
   setPaneDocument: (tabPath: string, paneId: string, docPath: string | null) => {

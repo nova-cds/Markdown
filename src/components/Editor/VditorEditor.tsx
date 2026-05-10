@@ -25,6 +25,7 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): T {
 
 interface VditorEditorProps {
   path: string;
+  isInPane?: boolean;
 }
 
 let tableTipTimeout: number | null = null;
@@ -279,7 +280,7 @@ function showTableShortcutTip() {
   }, 5000);
 }
 
-export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
+export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) => {
   const vditorRef = useRef<Vditor | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const updateDocument = useEditorStore((state) => state.updateDocument);
@@ -561,7 +562,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path }) => {
 
     // 获取保存的状态 - 从当前store获取最新状态
     const currentDocState = useEditorStore.getState().documents[path];
-    const savedOutlineVisible = currentDocState?.outlineVisible ?? true;
+    const savedOutlineVisible = isInPane ? false : (currentDocState?.outlineVisible ?? true);
     const savedEditorMode = currentDocState?.editorMode ?? 'ir';
     const savedScrollPosition = currentDocState?.scrollPosition ?? 0;
     const savedPreviewMode = currentDocState?.previewMode ?? 'editor';

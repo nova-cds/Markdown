@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from './components/Layout';
 import { useTheme } from './hooks';
-import { waitForTauri } from './utils/platform';
+import { waitForTauri, isTauriCached } from './utils/platform';
 import { useEditorStore, useUpdateStore } from './stores';
 
 function App() {
@@ -36,7 +36,8 @@ function App() {
       for (const file of Array.from(files)) {
         if (file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')) {
           const content = await file.text();
-          openDocument(`file://${file.name}`, content, false);
+          const filePath = (file as any).path || file.name;
+          openDocument(`file://${filePath}`, content, false);
         }
       }
     };
@@ -56,6 +57,45 @@ function App() {
     return () => {
       document.removeEventListener('drop', handleGlobalDrop);
       document.removeEventListener('dragover', handleDragOver);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isTauriCached()) return;
+    
+    let unlisten: (() => void) | null = null;
+    
+    const setupTauriDragDrop = async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const unlistenFn = await getCurrentWindow().onDragDropEvent(async (event) => {
+          if (event.payload.type === 'drop') {
+            const paths = event.payload.paths;
+            const { openDocument } = useEditorStore.getState();
+            
+            for (const path of paths) {
+              if (path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.txt')) {
+                try {
+                  const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                  const content = await readTextFile(path);
+                  openDocument(`file://${path}`, content, false);
+                } catch (err) {
+                  console.error('读取拖放文件失败:', err);
+                }
+              }
+            }
+          }
+        });
+        unlisten = unlistenFn;
+      } catch (err) {
+        console.error('设置Tauri拖放监听失败:', err);
+      }
+    };
+    
+    setupTauriDragDrop();
+    
+    return () => {
+      if (unlisten) unlisten();
     };
   }, []);
 

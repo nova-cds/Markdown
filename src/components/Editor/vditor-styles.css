@@ -26,8 +26,19 @@
 
 /* 内容区域 - 亮色主题强制白色 */
 .vditor .vditor-content {
-  overflow-y: auto !important;
+  overflow: hidden !important;
   background-color: #ffffff !important;
+}
+
+/* 编辑区域滚动 - 只让 vditor-reset 有滚动 */
+.vditor .vditor-content .vditor-ir,
+.vditor .vditor-content .vditor-sv {
+  overflow: hidden !important;
+}
+
+.vditor .vditor-content .vditor-ir pre.vditor-reset,
+.vditor .vditor-content .vditor-sv pre.vditor-reset {
+  overflow: auto !important;
 }
 
 /* 亮色主题 - 强制白色背景 */

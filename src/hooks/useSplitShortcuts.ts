@@ -45,8 +45,14 @@ export const useSplitShortcuts = () => {
           e.stopPropagation();
           
           const splitState = getCurrentState(activeTabPath);
-          if (splitState) {
-            closePane(activeTabPath, splitState.activePaneId);
+          if (splitState && splitState.activePaneId) {
+            const newActiveDocPath = closePane(activeTabPath, splitState.activePaneId);
+            if (newActiveDocPath !== undefined && newActiveDocPath !== null) {
+              useEditorStore.setState({ 
+                activeDocPath: newActiveDocPath,
+                activeTabPath: activeTabPath
+              });
+            }
           }
           return;
         }
