@@ -279,6 +279,8 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
         <div
           key={pane.id}
           className={`pane-leaf ${isActive && paneCount > 1 ? 'active' : ''} ${isDragOver ? 'drag-over' : ''}`}
+          data-pane-id={pane.id}
+          data-tab-path={tabPath}
           onClick={() => handlePaneClick(pane.id, pane.docPath)}
           onContextMenu={(e) => handleContextMenu(e, pane.id, pane.docPath)}
           onDragOver={(e) => handleDragOver(e, pane.id)}

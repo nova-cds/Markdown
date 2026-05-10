@@ -71,8 +71,46 @@ function App() {
         const unlistenFn = await getCurrentWindow().onDragDropEvent(async (event) => {
           if (event.payload.type === 'drop') {
             const paths = event.payload.paths;
-            const { openDocument } = useEditorStore.getState();
+            const position = event.payload.position;
             
+            const x = position.x;
+            const y = position.y;
+            
+            const element = document.elementFromPoint(x, y);
+            const paneLeaf = element?.closest('.pane-leaf') as HTMLElement | null;
+            
+            if (paneLeaf) {
+              const paneId = paneLeaf.getAttribute('data-pane-id');
+              const tabPath = paneLeaf.getAttribute('data-tab-path');
+              
+              if (paneId && tabPath) {
+                const { ensureDocument } = useEditorStore.getState();
+                const { setPaneDocument, setActivePane, getDocumentsInPanes } = await import('./stores').then(m => m.useSplitStore.getState());
+                
+                const existingDocs = getDocumentsInPanes(tabPath);
+                
+                for (const path of paths) {
+                  if (path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.txt')) {
+                    const docPath = `file://${path}`;
+                    
+                    if (existingDocs.includes(docPath)) continue;
+                    
+                    try {
+                      const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                      const content = await readTextFile(path);
+                      ensureDocument(docPath, content, false);
+                      setPaneDocument(tabPath, paneId, docPath);
+                      setActivePane(tabPath, paneId);
+                    } catch (err) {
+                      console.error('在窗格中打开拖放文件失败:', err);
+                    }
+                  }
+                }
+                return;
+              }
+            }
+            
+            const { openDocument } = useEditorStore.getState();
             for (const path of paths) {
               if (path.endsWith('.md') || path.endsWith('.markdown') || path.endsWith('.txt')) {
                 try {
