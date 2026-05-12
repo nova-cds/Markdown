@@ -12,7 +12,31 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.get_tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version tag
+        id: get_tag
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ steps.get_tag.outputs.tag }} \
+            --title "MD Editor ${{ steps.get_tag.outputs.tag }}" \
+            --notes "See the assets to download and install this version." \
+            --draft || echo "Release already exists"
+
   build:
+    needs: [create-release]
+    if: always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
@@ -69,52 +93,12 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build Tauri app (Windows - creates release)
-        if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: 'MD Editor v__VERSION__'
-          releaseBody: 'See the assets to download and install this version.'
-          releaseDraft: true
-          prerelease: false
-          args: --bundles nsis
-
-      - name: Build Tauri app (non-release)
-        if: matrix.platform != 'windows-latest' || !startsWith(github.ref, 'refs/tags/')
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.platform == 'windows-latest' && '--bundles nsis' || (matrix.platform == 'ubuntu-22.04' && '--bundles deb' || '') }}
-
-      - name: Wait for release to be ready (non-Windows)
-        if: matrix.platform != 'windows-latest' && startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
-        run: |
-          $VERSION = node -p "require('./package.json').version"
-          $TAG = "v$VERSION"
-          Write-Host "Waiting for release $TAG to be ready..."
-          $maxAttempts = 30
-          $attempt = 0
-          while ($attempt -lt $maxAttempts) {
-            $release = gh release view $TAG --json tagName 2>$null
-            if ($LASTEXITCODE -eq 0) {
-              Write-Host "Release $TAG is ready"
-              break
-            }
-            $attempt++
-            Write-Host "Attempt $attempt/$maxAttempts - waiting..."
-            Start-Sleep -Seconds 10
-          }
-          if ($attempt -eq $maxAttempts) {
-            Write-Host "Release not found after $maxAttempts attempts"
-            exit 1
-          }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload to release (macOS)
         if: matrix.platform == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
@@ -142,7 +126,7 @@ jobs:
             gh release upload $TAG $_.FullName --clobber
           }
 
-      - name: Upload portable exe to Release (Windows)
+      - name: Upload to release (Windows)
         if: matrix.platform == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         env:
@@ -151,6 +135,19 @@ jobs:
           $VERSION = node -p "require('./package.json').version"
           $TAG = "v$VERSION"
           
+          # Upload NSIS installer
+          Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -File | ForEach-Object {
+            Write-Host "Uploading $($_.Name)..."
+            gh release upload $TAG $_.FullName --clobber
+          }
+          
+          # Upload MSI installer
+          Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -File | ForEach-Object {
+            Write-Host "Uploading $($_.Name)..."
+            gh release upload $TAG $_.FullName --clobber
+          }
+          
+          # Upload portable exe
           $exePath = Get-ChildItem -Path "src-tauri/target/release" -Filter "*.exe" -File | Where-Object { $_.Name -notlike "*setup*" } | Select-Object -First 1
           
           if ($exePath) {
