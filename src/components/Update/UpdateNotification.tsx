@@ -66,8 +66,13 @@ const renderMarkdown = (text: string): React.ReactNode => {
 export const UpdateNotification: React.FC<Props> = ({ onClose }) => {
   const { latestVersion, releaseNotes, downloadUrl, publishedAt } = useUpdateStore();
 
-  const handleDownload = () => {
-    window.open(downloadUrl, '_blank');
+  const handleDownload = async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-shell');
+      await open(downloadUrl);
+    } catch {
+      window.open(downloadUrl, '_blank');
+    }
     onClose();
   };
 

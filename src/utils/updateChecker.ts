@@ -20,17 +20,25 @@ export function compareVersions(v1: string, v2: string): number {
 
 interface CachedUpdate extends UpdateInfo {
   checkTime: number;
+  cachedVersion: string;
+}
+
+const CACHE_KEY = 'update-cache';
+const CACHE_DURATION = 60 * 60 * 1000;
+
+export function clearUpdateCache(): void {
+  localStorage.removeItem(CACHE_KEY);
 }
 
 function getCachedUpdate(): CachedUpdate | null {
   try {
-    const cached = localStorage.getItem('update-cache');
+    const cached = localStorage.getItem(CACHE_KEY);
     if (!cached) return null;
 
     const data = JSON.parse(cached) as CachedUpdate;
     const now = Date.now();
 
-    if (now - data.checkTime > 60 * 60 * 1000) {
+    if (now - data.checkTime > CACHE_DURATION) {
       return null;
     }
 
@@ -44,15 +52,33 @@ function setCachedUpdate(info: UpdateInfo): void {
   const cached: CachedUpdate = {
     ...info,
     checkTime: Date.now(),
+    cachedVersion: version,
   };
-  localStorage.setItem('update-cache', JSON.stringify(cached));
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cached));
+}
+
+function shouldClearCache(cached: CachedUpdate): boolean {
+  if (compareVersions(cached.latestVersion, `v${version}`) <= 0) {
+    return true;
+  }
+  
+  if (cached.cachedVersion !== version) {
+    return true;
+  }
+  
+  return false;
 }
 
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   try {
     const cached = getCachedUpdate();
+    
     if (cached) {
-      return compareVersions(cached.latestVersion, `v${version}`) > 0 ? cached : null;
+      if (shouldClearCache(cached)) {
+        clearUpdateCache();
+      } else {
+        return compareVersions(cached.latestVersion, `v${version}`) > 0 ? cached : null;
+      }
     }
 
     const response = await fetch(
