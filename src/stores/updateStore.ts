@@ -29,19 +29,18 @@ export const useUpdateStore = create<UpdateState>()(
       checkedVersion: '',
 
       checkForUpdate: async () => {
-        const { lastCheckTime, checking, checkedVersion } = get();
-        const now = Date.now();
+        const { checking, checkedVersion } = get();
         const currentVersion = getAppVersion();
 
         const versionChanged = checkedVersion && checkedVersion !== currentVersion;
-        const timeElapsed = now - lastCheckTime >= 60 * 60 * 1000;
-
-        if (!versionChanged && !timeElapsed) {
-          return;
-        }
 
         if (checking) {
           return;
+        }
+
+        if (versionChanged) {
+          const { clearUpdateCache } = await import('../utils/updateChecker');
+          clearUpdateCache();
         }
 
         set({ checking: true });
@@ -54,7 +53,7 @@ export const useUpdateStore = create<UpdateState>()(
             releaseNotes: info?.releaseNotes || '',
             downloadUrl: info?.downloadUrl || '',
             publishedAt: info?.publishedAt || '',
-            lastCheckTime: now,
+            lastCheckTime: Date.now(),
             checking: false,
             checkedVersion: currentVersion,
           });
