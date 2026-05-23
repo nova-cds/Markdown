@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 type Theme = 'light' | 'dark' | 'system';
+export type EditorWidth = 'full' | 'wide' | 'normal';
 
 export const EMBED_MAX_DEPTH_MIN = 1;
 export const EMBED_MAX_DEPTH_MAX = 5;
@@ -18,6 +19,7 @@ interface SettingsState {
   autoSaveDelay: number;
   embedMaxDepth: number;
   embedMaxCount: number;
+  editorWidth: EditorWidth;
 
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
@@ -26,6 +28,7 @@ interface SettingsState {
   setAutoSaveDelay: (delay: number) => void;
   setEmbedMaxDepth: (depth: number) => void;
   setEmbedMaxCount: (count: number) => void;
+  setEditorWidth: (width: EditorWidth) => void;
   getEffectiveTheme: () => 'light' | 'dark';
 }
 
@@ -38,6 +41,7 @@ export const useSettingsStore = create<SettingsState>()(
       autoSaveDelay: 1000,
       embedMaxDepth: EMBED_MAX_DEPTH_DEFAULT,
       embedMaxCount: EMBED_MAX_COUNT_DEFAULT,
+      editorWidth: 'full' as EditorWidth,
 
       setTheme: (theme: Theme) => set({ theme }),
       toggleTheme: () => {
@@ -57,6 +61,7 @@ export const useSettingsStore = create<SettingsState>()(
         const clampedCount = Math.min(EMBED_MAX_COUNT_MAX, Math.max(EMBED_MAX_COUNT_MIN, count));
         set({ embedMaxCount: clampedCount });
       },
+      setEditorWidth: (width: EditorWidth) => set({ editorWidth: width }),
 
       getEffectiveTheme: () => {
         const { theme } = get();

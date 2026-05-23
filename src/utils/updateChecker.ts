@@ -30,6 +30,10 @@ export function clearUpdateCache(): void {
   localStorage.removeItem(CACHE_KEY);
 }
 
+export function getAppVersion(): string {
+  return version;
+}
+
 function getCachedUpdate(): CachedUpdate | null {
   try {
     const cached = localStorage.getItem(CACHE_KEY);

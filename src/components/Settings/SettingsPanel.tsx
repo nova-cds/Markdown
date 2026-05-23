@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSettingsStore, EMBED_MAX_DEPTH_MIN, EMBED_MAX_DEPTH_MAX, EMBED_MAX_COUNT_MIN, EMBED_MAX_COUNT_MAX } from '../../stores/settingsStore';
-import { X, Sun, Moon, Monitor, Image, Save, Info, FileText } from 'lucide-react';
+import { useSettingsStore, EMBED_MAX_DEPTH_MIN, EMBED_MAX_DEPTH_MAX, EMBED_MAX_COUNT_MIN, EMBED_MAX_COUNT_MAX, EditorWidth } from '../../stores/settingsStore';
+import { X, Sun, Moon, Monitor, Image, Save, Info, FileText, Columns } from 'lucide-react';
 import { version } from '../../../package.json';
 
 export const SettingsPanel: React.FC = () => {
@@ -18,12 +18,14 @@ export const SettingsPanel: React.FC = () => {
     autoSaveDelay,
     embedMaxDepth,
     embedMaxCount,
+    editorWidth,
     setTheme,
     setImageDirectory,
     setAutoSave,
     setAutoSaveDelay,
     setEmbedMaxDepth,
     setEmbedMaxCount,
+    setEditorWidth,
   } = useSettingsStore();
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -57,6 +59,10 @@ export const SettingsPanel: React.FC = () => {
     if (!isNaN(value)) {
       setEmbedMaxCount(value);
     }
+  };
+
+  const handleEditorWidthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setEditorWidth(e.target.value as EditorWidth);
   };
 
   return (
@@ -108,13 +114,40 @@ export const SettingsPanel: React.FC = () => {
                       <option value="system">💻 跟随系统</option>
                     </select>
                   </div>
-                  <p className="text-xs text-[var(--editor-text-muted)]">
-                    主题变化将实时生效
-                  </p>
-                </div>
+                <p className="text-xs text-[var(--editor-text-muted)]">
+                  主题变化将实时生效
+                </p>
               </div>
+            </div>
 
-              {/* Image directory settings */}
+            {/* Editor width settings */}
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4">
+                <Columns size={16} className="text-[var(--accent-400)]" />
+                <h3 className="text-sm font-medium text-[var(--editor-text)]">编辑区域宽度</h3>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-[var(--editor-text-secondary)] mb-2">
+                    内容宽度
+                  </label>
+                  <select
+                    value={editorWidth}
+                    onChange={handleEditorWidthChange}
+                    className="w-full px-3 py-2.5 bg-[var(--editor-surface)] border border-[var(--editor-border)] rounded-lg text-[var(--editor-text)] focus:outline-none focus:border-[var(--accent-500)] focus:ring-2 focus:ring-[var(--accent-500)]/20 transition-all cursor-pointer"
+                  >
+                    <option value="full">全宽 - 自适应铺满</option>
+                    <option value="wide">较宽 - 960px</option>
+                    <option value="normal">普通 - 750px</option>
+                  </select>
+                </div>
+                <p className="text-xs text-[var(--editor-text-muted)]">
+                  调整编辑区域的最大宽度，适合不同阅读习惯
+                </p>
+              </div>
+            </div>
+
+            {/* Image directory settings */}
               <div className="mb-8">
                 <div className="flex items-center gap-2 mb-4">
                   <Image size={16} className="text-[var(--accent-400)]" />

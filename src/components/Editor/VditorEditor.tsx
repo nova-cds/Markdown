@@ -294,6 +294,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
   const saveAsFile = useSaveAsFile();
   const embedMaxDepth = useSettingsStore((state) => state.embedMaxDepth);
   const embedMaxCount = useSettingsStore((state) => state.embedMaxCount);
+  const editorWidth = useSettingsStore((state) => state.editorWidth);
   const rootHandle = useFileStore((state) => state.rootHandle);
   const isInitializedRef = useRef(false);
   const currentPathRef = useRef<string>('');
@@ -1928,7 +1929,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
   }, []);
 
   return (
-    <div className="vditor-container" style={{ position: 'relative' }}>
+    <div className={`vditor-container editor-width-${editorWidth}`} style={{ position: 'relative' }}>
       <div ref={containerRef} className="vditor-wrapper" />
       {/* 表情选择器弹窗 */}
       {showEmojiPicker && (

@@ -526,3 +526,146 @@
 .dark .vditor .vditor-ir pre.vditor-reset .vditor-ir__preview pre code {
   background-color: #1e293b !important;
 }
+
+/* 暗色模式 - 代码块文字颜色 */
+.dark .vditor .vditor-ir pre.vditor-reset pre code.hljs,
+.dark .vditor .vditor-sv pre.vditor-reset pre code.hljs,
+.dark .vditor .vditor-wysiwyg pre.vditor-reset pre code.hljs,
+.dark .vditor .vditor-ir pre.vditor-reset .vditor-ir__marker--pre pre code,
+.dark .vditor .vditor-ir pre.vditor-reset .vditor-ir__preview pre code {
+  color: #e2e8f0 !important;
+}
+
+/* 暗色模式 - 代码块容器背景和边框 */
+.dark .vditor .vditor-ir pre.vditor-reset pre,
+.dark .vditor .vditor-sv pre.vditor-reset pre,
+.dark .vditor .vditor-wysiwyg pre.vditor-reset pre {
+  background-color: #0f172a !important;
+  border: 1px solid var(--editor-border, #334155) !important;
+  border-radius: 6px !important;
+}
+
+/* 暗色模式 - SV模式代码预览区 */
+.dark .vditor .vditor-sv__preview {
+  background-color: var(--editor-bg, #0f172a) !important;
+}
+
+.dark .vditor .vditor-sv__preview pre code.hljs {
+  color: #e2e8f0 !important;
+  background-color: #1e293b !important;
+}
+
+/* 暗色模式 - hljs 语法高亮颜色 */
+.dark .vditor .hljs-comment,
+.dark .vditor .hljs-quote {
+  color: #64748b !important;
+}
+
+.dark .vditor .hljs-keyword,
+.dark .vditor .hljs-selector-tag,
+.dark .vditor .hljs-addition {
+  color: #f472b6 !important;
+}
+
+.dark .vditor .hljs-string,
+.dark .vditor .hljs-attr,
+.dark .vditor .hljs-template-variable {
+  color: #a5d6ff !important;
+}
+
+.dark .vditor .hljs-number,
+.dark .vditor .hljs-literal,
+.dark .vditor .hljs-type,
+.dark .vditor .hljs-built_in {
+  color: #dab55f !important;
+}
+
+.dark .vditor .hljs-title,
+.dark .vditor .hljs-section,
+.dark .vditor .hljs-name {
+  color: #60a5fa !important;
+}
+
+.dark .vditor .hljs-function {
+  color: #93c5fd !important;
+}
+
+.dark .vditor .hljs-params {
+  color: #94a3b8 !important;
+}
+
+.dark .vditor .hljs-variable {
+  color: #fbbf24 !important;
+}
+
+.dark .vditor .hljs-class .hljs-title,
+.dark .vditor .hljs-symbol,
+.dark .vditor .hljs-bullet {
+  color: #86efac !important;
+}
+
+.dark .vditor .hljs-meta,
+.dark .vditor .hljs-subst {
+  color: #e2e8f0 !important;
+}
+
+.dark .vditor .hljs-deletion {
+  color: #fca5a5 !important;
+}
+
+.dark .vditor .hljs-regexp,
+.dark .vditor .hljs-attribute {
+  color: #67e8f9 !important;
+}
+
+.dark .vditor .hljs-selector-class {
+  color: #fda4af !important;
+}
+
+.dark .vditor .hljs-selector-id {
+  color: #c4b5fd !important;
+}
+
+.dark .vditor .hljs-link {
+  color: #93c5fd !important;
+}
+
+.dark .vditor .hljs-emphasis {
+  font-style: italic !important;
+}
+
+.dark .vditor .hljs-strong {
+  font-weight: bold !important;
+}
+
+/* ============================================
+   编辑区域宽度控制
+   ============================================ */
+
+/* 全宽 - 自适应铺满 */
+.editor-width-full .vditor-ir pre.vditor-reset {
+  max-width: 100% !important;
+}
+
+/* 较宽 - 960px */
+.editor-width-wide .vditor-ir pre.vditor-reset {
+  max-width: 960px !important;
+}
+
+/* 普通 - 750px */
+.editor-width-normal .vditor-ir pre.vditor-reset {
+  max-width: 750px !important;
+}
+
+/* SV 模式也应用宽度限制 */
+.editor-width-full .vditor-sv pre.vditor-reset {
+  max-width: 100% !important;
+}
+
+.editor-width-wide .vditor-sv pre.vditor-reset {
+  max-width: 960px !important;
+}
+
+.editor-width-normal .vditor-sv pre.vditor-reset {
+  max-width: 750px !important;
+}
