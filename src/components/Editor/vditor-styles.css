@@ -30,14 +30,17 @@
   background-color: #ffffff !important;
 }
 
-/* 编辑区域滚动 - 只让 vditor-reset 有滚动 */
-.vditor .vditor-content .vditor-ir,
-.vditor .vditor-content .vditor-sv {
+/* 编辑区域滚动 - IR模式让 vditor-reset 有滚动 */
+.vditor .vditor-content .vditor-ir {
   overflow: hidden !important;
 }
 
-.vditor .vditor-content .vditor-ir pre.vditor-reset,
-.vditor .vditor-content .vditor-sv pre.vditor-reset {
+.vditor .vditor-content .vditor-ir pre.vditor-reset {
+  overflow: auto !important;
+}
+
+/* SV模式 - vditor-sv 本身就是textarea，需要保持滚动 */
+.vditor .vditor-content .vditor-sv {
   overflow: auto !important;
 }
 
@@ -201,7 +204,7 @@
 
 /* 编辑区域底部缓冲 - 约50%高度，类似 Typora */
 .vditor .vditor-ir pre.vditor-reset,
-.vditor .vditor-sv pre.vditor-reset {
+.vditor .vditor-sv {
   padding-bottom: 50vh !important;
   min-height: 100% !important;
 }

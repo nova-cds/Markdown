@@ -802,9 +802,39 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
                 
                 await writeFile(filePath, uint8Array);
                 
-                const relativePath = `${imageDirectory}/${fileName}`;
-                const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
-                vditorRef.current?.insertValue(markdown);
+const relativePath = `${imageDirectory}/${fileName}`;
+                const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})\n\n`;
+                const vditor = vditorRef.current;
+                if (vditor) {
+                  vditor.insertValue(markdown);
+                  
+                  setTimeout(() => {
+                    const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+                    if (vditorReset) {
+                      vditorReset.focus();
+                      
+                      const selection = window.getSelection();
+                      if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        let cursorRect = range.getBoundingClientRect();
+                        
+                        if (cursorRect.bottom === 0) {
+                          const tempSpan = document.createElement('span');
+                          tempSpan.textContent = '\u200B';
+                          range.insertNode(tempSpan);
+                          cursorRect = tempSpan.getBoundingClientRect();
+                          tempSpan.remove();
+                        }
+                        
+                        const containerRect = vditorReset.getBoundingClientRect();
+                        const margin = 80;
+                        if (cursorRect.bottom > containerRect.bottom - margin) {
+                          vditorReset.scrollTop += (cursorRect.bottom - containerRect.bottom + margin);
+                        }
+                      }
+                    }
+                  }, 100);
+                }
               }
               
               return null;
@@ -849,8 +879,38 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
               await writable.close();
               
               const relativePath = `${imageDirectory}/${fileName}`;
-              const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})`;
-              vditorRef.current?.insertValue(markdown);
+              const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})\n\n`;
+              const vditor = vditorRef.current;
+              if (vditor) {
+                vditor.insertValue(markdown);
+                
+                setTimeout(() => {
+                  const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+                  if (vditorReset) {
+                    vditorReset.focus();
+                    
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0);
+                      let cursorRect = range.getBoundingClientRect();
+                      
+                      if (cursorRect.bottom === 0) {
+                        const tempSpan = document.createElement('span');
+                        tempSpan.textContent = '\u200B';
+                        range.insertNode(tempSpan);
+                        cursorRect = tempSpan.getBoundingClientRect();
+                        tempSpan.remove();
+                      }
+                      
+                      const containerRect = vditorReset.getBoundingClientRect();
+                      const margin = 80;
+                      if (cursorRect.bottom > containerRect.bottom - margin) {
+                        vditorReset.scrollTop += (cursorRect.bottom - containerRect.bottom + margin);
+                      }
+                    }
+                  }
+                }, 100);
+              }
             }
             
             refreshFileTree();
@@ -1764,11 +1824,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
           }
         };
         
-        // MutationObserver 添加 50ms debounce
-        const debouncedMutationCallback = debounce(handleMutationCallback, 50);
-        
         // 监听DOM变化，处理新插入的图片和代码块
-        const imageObserver = new MutationObserver(debouncedMutationCallback);
+        const imageObserver = new MutationObserver(handleMutationCallback);
         
         imageObserver.observe(containerRef.current!, {
           childList: true,
