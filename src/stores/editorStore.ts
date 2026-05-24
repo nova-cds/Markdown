@@ -67,6 +67,7 @@ interface EditorStateStore {
   saveStatus: SaveStatus;
   wordCount: number;
   markdownLength: number;
+  focusMode: boolean;
 
   openDocument: (path: string, content?: string, isNew?: boolean) => void;
   ensureDocument: (path: string, content?: string, isNew?: boolean) => void;
@@ -83,6 +84,8 @@ interface EditorStateStore {
   setScrollPosition: (path: string, position: number) => void;
   setPreviewMode: (path: string, mode: PreviewMode) => void;
   updateFilePath: (docPath: string, filePath: string) => void;
+  toggleFocusMode: () => void;
+  setFocusMode: (enabled: boolean) => void;
 }
 
 export const useEditorStore = create<EditorStateStore>((set, get) => ({
@@ -93,6 +96,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
   saveStatus: 'saved',
   wordCount: 0,
   markdownLength: 0,
+  focusMode: false,
 
   openDocument: (path: string, content?: string, isNew?: boolean) => {
     const { documents, tabs } = get();
@@ -355,5 +359,14 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
         },
       },
     });
+  },
+
+  toggleFocusMode: () => {
+    const { focusMode } = get();
+    set({ focusMode: !focusMode });
+  },
+
+  setFocusMode: (enabled: boolean) => {
+    set({ focusMode: enabled });
   },
 }));

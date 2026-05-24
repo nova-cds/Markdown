@@ -3,3 +3,4 @@ export { Sidebar } from './Sidebar';
 export { TabBar } from './Tabs';
 export { EditorContainer, VditorEditor } from './Editor';
 export { SettingsPanel } from './Settings';
+export { QuickOpen } from './QuickOpen';

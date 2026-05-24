@@ -200,6 +200,72 @@ function processLocalImages(container: HTMLElement, docPath: string) {
   imgs.forEach(img => handleLocalImage(img, docPath));
 }
 
+// 代码块复制按钮 SVG 图标
+const COPY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+// 为代码块添加复制按钮
+function addCopyButtonsToCodeBlocks(container: HTMLElement) {
+  const codeBlocks = container.querySelectorAll('pre');
+  
+  codeBlocks.forEach(pre => {
+    // 跳过已处理的
+    if (pre.querySelector('.vditor-code-copy-btn')) return;
+    
+    const code = pre.querySelector('code');
+    if (!code) return;
+    
+    const btn = document.createElement('button');
+    btn.className = 'vditor-code-copy-btn';
+    btn.innerHTML = `${COPY_ICON} 复制`;
+    btn.setAttribute('aria-label', '复制代码');
+    btn.setAttribute('title', '复制代码');
+    
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const text = code.textContent || '';
+      
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        btn.innerHTML = `${CHECK_ICON} 已复制`;
+        
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = `${COPY_ICON} 复制`;
+        }, 2000);
+      }).catch(err => {
+        console.error('复制失败:', err);
+        // 降级方案
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+          document.execCommand('copy');
+          btn.classList.add('copied');
+          btn.innerHTML = `${CHECK_ICON} 已复制`;
+          
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = `${COPY_ICON} 复制`;
+          }, 2000);
+        } catch (e) {
+          console.error('复制失败:', e);
+        }
+        
+        document.body.removeChild(textarea);
+      });
+    });
+    
+    pre.appendChild(btn);
+  });
+}
+
 function showTableShortcutTip() {
   if (hasShownTableTip) return;
   hasShownTableTip = true;
@@ -957,6 +1023,9 @@ const relativePath = `${imageDirectory}/${fileName}`;
         
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
+        
+        // 为代码块添加复制按钮
+        addCopyButtonsToCodeBlocks(containerRef.current!);
         
         // 拦截原版emoji按钮点击，使用自定义表情选择器
         const emojiBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="emoji"]');
@@ -1788,6 +1857,8 @@ const relativePath = `${imageDirectory}/${fileName}`;
         
         // MutationObserver 回调处理函数
         const handleMutationCallback = (mutations: MutationRecord[]) => {
+          let hasNewCodeBlock = false;
+          
           for (const mutation of mutations) {
             for (const node of Array.from(mutation.addedNodes)) {
               // 处理图片
@@ -1819,8 +1890,22 @@ const relativePath = `${imageDirectory}/${fileName}`;
                       vditorRef.current?.insertValue('　　');
                     }
                 }
+                
+                // 检测新添加的代码块
+                if (node.tagName === 'PRE' || node.querySelector?.('pre')) {
+                  hasNewCodeBlock = true;
+                }
               }
             }
+          }
+          
+          // 如果有新代码块，延迟添加复制按钮
+          if (hasNewCodeBlock) {
+            setTimeout(() => {
+              if (containerRef.current) {
+                addCopyButtonsToCodeBlocks(containerRef.current);
+              }
+            }, 100);
           }
         };
         

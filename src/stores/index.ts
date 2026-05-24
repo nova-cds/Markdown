@@ -6,6 +6,8 @@ export { useSettingsStore } from './settingsStore';
 export { useUpdateStore } from './updateStore';
 export { useSplitStore } from './splitStore';
 export type { Pane, PaneLeaf, PaneSplit, SplitDirection, TabSplitState } from './splitStore';
+export { useRecentFilesStore } from './recentFilesStore';
+export type { RecentFile } from './recentFilesStore';
 
 let internalDragData: string | null = null;
 
