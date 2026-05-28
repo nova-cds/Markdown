@@ -3,6 +3,7 @@ import { Sidebar } from '../Sidebar/Sidebar';
 import { TitleBar } from '../TitleBar/TitleBar';
 import { EditorContainer } from '../Editor/EditorContainer';
 import { SettingsPanel } from '../Settings/SettingsPanel';
+import { NotebookPanel } from '../Notebook';
 import { useEditorStore } from '../../stores';
 import { useAutoSave, useTheme, useFileChangeDetection, useSplitShortcuts } from '../../hooks';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -68,6 +69,9 @@ export const Layout: React.FC = () => {
         {/* Status bar */}
         <StatusBar />
       </div>
+
+      {/* AI Notebook panel */}
+      <NotebookPanel />
 
       {/* Toggle sidebar button */}
       <button
