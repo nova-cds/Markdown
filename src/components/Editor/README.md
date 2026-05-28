@@ -1,33 +1,43 @@
 # Markdown 编辑器组件
 
-基于 ProseMirror 的 Typora 风格 Markdown 编辑器。
+基于 [Vditor](https://github.com/Vanessa219/vditor) 的 Typora 风格 Markdown 编辑器。
 
 ## 组件结构
 
-### 1. Editor.tsx - 主编辑器组件
-- 封装 ProseMirror 的 React 组件
-- 使用 useRef 管理编辑器 DOM
-- 使用 useEffect 初始化 ProseMirror EditorView
+### 1. VditorEditor.tsx - 主编辑器组件
+- 封装 Vditor 的 React 组件
+- 使用 useRef 管理编辑器实例
+- 使用 useEffect 初始化 Vditor
 - 支持传入 path 参数标识当前文档
 - 内容变化时调用 updateDocument 更新 store
-- 处理图片粘贴事件
+- 处理图片粘贴事件（Ctrl+V 粘贴图片保存到本地 img 目录）
+- 支持三种编辑模式：所见即所得（wysiwyg）、实时渲染（ir）、分屏预览（sv）
 
 ### 2. EditorContainer.tsx - 编辑器容器
 - 从 useEditorStore 获取 activeDocPath
 - 没有文档时显示欢迎界面
-- 有文档时渲染 Editor 组件
+- 有文档时渲染 VditorEditor 组件
 
-### 3. nodeViews.ts - Typora 风格 NodeView
-- 实现单栏编辑模式
-- BlockNodeView: 基础块级节点视图
-- 支持 editing 状态切换
-- 光标所在 Block 显示可编辑源码
-- 其他 Block 显示渲染结果
+### 3. PaneContainer.tsx - 分栏窗格容器
+- 管理分栏布局中的窗格
+- 支持水平/垂直分栏
+- 处理窗格间的拖拽操作
 
-### 4. plugins.ts - 编辑器插件
-- createKeymapPlugin: 快捷键(Ctrl+B/I/S)
-- createImagePastePlugin: 图片粘贴处理
-- createPlaceholderPlugin: 空文档占位符
+### 4. ReplaceDialog.tsx - 查找替换对话框
+- 支持文档内容查找和替换
+- 支持大小写敏感/正则匹配
+
+### 5. EmojiPicker.tsx - Emoji 选择器
+- 支持系统 Emoji 表情分组浏览和选择
+
+### 6. ContextMenu.tsx - 右键菜单
+- 编辑器内右键操作菜单
+
+### 7. CloseTabConfirm.tsx - 关闭确认
+- 关闭未保存文档时的确认对话框
+
+### 8. PaneWelcome.tsx - 窗格欢迎页
+- 空窗格的欢迎/引导界面
 
 ## 使用方法
 
@@ -47,30 +57,45 @@ function App() {
 
 - `Ctrl+B`: 加粗
 - `Ctrl+I`: 斜体
-- `Ctrl+``: 行内代码
-- `Ctrl+S`: 保存（需要自定义实现）
+- `Ctrl+D`: 删除线
+- `Ctrl+S`: 保存
+- `Ctrl+Shift+S`: 另存为
+- `Ctrl+M`: 插入表格
+- `Ctrl+=`: 表格插入行
+- `Ctrl+-`: 表格删除当前行
+- `Ctrl+Shift+=`: 表格插入列
+- `Ctrl+Shift+-`: 表格删除当前列
+- `Ctrl+/`: 切换实时渲染与预览模式
 
 ## 特性
 
 1. **Typora 风格编辑体验**
    - 所见即所得
-   - 实时渲染
-   - 单栏编辑模式
+   - 实时渲染（类似 Typora）
+   - 分屏预览
 
 2. **图片支持**
-   - 粘贴图片（自动转 base64）
-   - 拖放图片上传
+   - Ctrl+V 粘贴图片，自动保存到 img 目录
+   - 使用相对路径引用图片（可配置目录名）
 
 3. **Markdown 语法支持**
    - 标题 (h1-h6)
    - 段落
-   - 列表（有序/无序）
+   - 列表（有序/无序/任务列表）
    - 引用
    - 代码块
-   - 链接
-   - 图片
+   - 链接、图片
    - 粗体/斜体/删除线
    - 行内代码
+   - 表格
+   - 脚注
+   - 高亮（==标记==）
+   - 上标、下标
+   - TOC 目录
+   - Mermaid 图表
+   - PlantUML 图表
+   - Emoji 表情
+   - 文档嵌入（`[[显示信息]](xxx.md)`）
 
 4. **状态管理**
    - 文档状态持久化
@@ -80,41 +105,22 @@ function App() {
 ## 依赖
 
 - react
-- prosemirror-view
-- prosemirror-state
-- prosemirror-model
-- prosemirror-keymap
-- prosemirror-commands
-- zustand (状态管理)
+- vditor（Markdown 编辑器引擎）
+- zustand（状态管理）
+- lucide-react（图标）
 
 ## 样式
 
-编辑器样式在 `styles.css` 中定义，包含：
+编辑器样式在 `vditor-styles.css` 中定义，包含：
 - 编辑器容器样式
-- 块级节点样式
-- Typora 风格的视觉反馈
+- Vditor 主题覆盖（亮色/暗色）
+- 有序列表缩进层级样式
 - 响应式布局
-
-## 扩展
-
-可以通过以下方式扩展编辑器：
-
-1. **添加新的节点类型**
-   - 在 schema.ts 中定义新节点
-   - 在 nodeViews.ts 中创建对应的 NodeView
-   - 在 plugins.ts 中添加快捷键支持
-
-2. **自定义插件**
-   - 创建新的 Plugin 实例
-   - 添加到 createPlugins() 函数中
-
-3. **图片上传**
-   - 修改 createImagePastePlugin
-   - 集成图片上传服务
 
 ## 注意事项
 
-1. 编辑器使用 ProseMirror 的 Schema 定义文档结构
-2. Markdown 解析和序列化使用 prosemirror-markdown
+1. 编辑器使用 Vditor 作为核心引擎
+2. Markdown 解析和渲染由 Vditor 内部处理
 3. 状态管理使用 zustand
 4. 所有组件都使用 TypeScript 编写，确保类型安全
+5. Vditor 静态资源存放在 `public/vditor/` 目录下
