@@ -1,20 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from '../Sidebar/Sidebar';
 import { TitleBar } from '../TitleBar/TitleBar';
 import { EditorContainer } from '../Editor/EditorContainer';
 import { SettingsPanel } from '../Settings/SettingsPanel';
+import { QuickOpen } from '../QuickOpen/QuickOpen';
 import { useEditorStore } from '../../stores';
 import { useAutoSave, useTheme, useFileChangeDetection, useSplitShortcuts } from '../../hooks';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Focus, X } from 'lucide-react';
 
 export const Layout: React.FC = () => {
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [quickOpenOpen, setQuickOpenOpen] = useState(false);
+
+  const focusMode = useEditorStore((state) => state.focusMode);
+  const toggleFocusMode = useEditorStore((state) => state.toggleFocusMode);
 
   useAutoSave();
   useTheme();
   useFileChangeDetection();
   useSplitShortcuts();
+
+  // Ctrl+P / Cmd+P 快速打开
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      e.preventDefault();
+      setQuickOpenOpen(true);
+    }
+    // Ctrl+Shift+F 切换专注模式
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+      e.preventDefault();
+      toggleFocusMode();
+    }
+    // ESC 退出专注模式
+    if (e.key === 'Escape' && focusMode) {
+      e.preventDefault();
+      toggleFocusMode();
+    }
+  }, [focusMode, toggleFocusMode]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   const handleSidebarResize = (e: React.MouseEvent) => {
     const startX = e.clientX;
@@ -37,9 +65,9 @@ export const Layout: React.FC = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[var(--editor-bg)] text-[var(--editor-text)]">
-      {/* Sidebar */}
+      {/* Sidebar - 专注模式下隐藏 */}
       <div
-        className="flex-shrink-0 relative transition-all duration-[var(--transition-normal)]"
+        className={`flex-shrink-0 relative transition-all duration-[var(--transition-normal)] ${focusMode ? 'hidden' : ''}`}
         style={{ width: isSidebarCollapsed ? 0 : sidebarWidth }}
       >
         {!isSidebarCollapsed && <Sidebar />}
@@ -57,39 +85,82 @@ export const Layout: React.FC = () => {
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* TitleBar - 包含 Tab 页签和窗口控制 */}
-        <TitleBar />
+        {/* TitleBar - 专注模式下隐藏 */}
+        <div className={`transition-all duration-[var(--transition-normal)] ${focusMode ? 'hidden' : ''}`}>
+          <TitleBar />
+        </div>
 
         {/* Editor area */}
         <div className="flex-1 overflow-hidden">
           <EditorContainer />
         </div>
 
-        {/* Status bar */}
-        <StatusBar />
+        {/* Status bar - 专注模式下隐藏 */}
+        <div className={`transition-all duration-[var(--transition-normal)] ${focusMode ? 'hidden' : ''}`}>
+          <StatusBar />
+        </div>
       </div>
 
-      {/* Toggle sidebar button */}
-      <button
-        className={`
-          absolute top-1/2 transform -translate-y-1/2 z-10
-          w-6 h-12 flex items-center justify-center
-          bg-[var(--sidebar-surface)] border border-[var(--sidebar-border)]
-          rounded-r-lg shadow-sm
-          text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)]
-          hover:bg-[var(--sidebar-hover)]
-          transition-all duration-[var(--transition-fast)]
-          group
-        `}
-        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        style={{ left: isSidebarCollapsed ? 0 : sidebarWidth - 1 }}
-      >
-        {isSidebarCollapsed ? (
-          <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-        ) : (
-          <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
-        )}
-      </button>
+      {/* Toggle sidebar button - 专注模式下隐藏 */}
+      {!focusMode && (
+        <button
+          className={`
+            absolute top-1/2 transform -translate-y-1/2 z-10
+            w-6 h-12 flex items-center justify-center
+            bg-[var(--sidebar-surface)] border border-[var(--sidebar-border)]
+            rounded-r-lg shadow-sm
+            text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)]
+            hover:bg-[var(--sidebar-hover)]
+            transition-all duration-[var(--transition-fast)]
+            group
+          `}
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          style={{ left: isSidebarCollapsed ? 0 : sidebarWidth - 1 }}
+        >
+          {isSidebarCollapsed ? (
+            <ChevronRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+          ) : (
+            <ChevronLeft size={16} className="transition-transform group-hover:-translate-x-0.5" />
+          )}
+        </button>
+      )}
+
+      {/* 专注模式退出按钮 */}
+      {focusMode && (
+        <div className="fixed top-4 right-4 z-[100] animate-fade-in">
+          <button
+            onClick={toggleFocusMode}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg
+              bg-[var(--editor-surface)] border border-[var(--editor-border)]
+              text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)]
+              hover:bg-[var(--sidebar-hover)] hover:border-[var(--accent-500)]
+              transition-all duration-[var(--transition-fast)]
+              shadow-lg backdrop-blur-sm"
+            title="退出专注模式 (ESC)"
+          >
+            <X size={16} />
+            <span className="text-sm">退出专注模式</span>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-[var(--editor-code-bg)] rounded border border-[var(--editor-border)]">
+              ESC
+            </kbd>
+          </button>
+        </div>
+      )}
+
+      {/* 专注模式指示器 - 左下角 */}
+      {focusMode && (
+        <div className="fixed bottom-4 left-4 z-[100] animate-fade-in">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full
+            bg-[var(--accent-500)]/10 border border-[var(--accent-500)]/20
+            text-[var(--accent-500)] text-xs">
+            <Focus size={14} />
+            <span>专注模式</span>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Open */}
+      <QuickOpen isOpen={quickOpenOpen} onClose={() => setQuickOpenOpen(false)} />
 
       {/* Settings panel */}
       <SettingsPanel />
@@ -102,6 +173,7 @@ const StatusBar: React.FC = () => {
   const saveStatus = useEditorStore((state) => state.saveStatus);
   const wordCount = useEditorStore((state) => state.wordCount);
   const markdownLength = useEditorStore((state) => state.markdownLength);
+  const toggleFocusMode = useEditorStore((state) => state.toggleFocusMode);
   const [isDark, setIsDark] = React.useState(false);
 
   React.useEffect(() => {
@@ -142,6 +214,16 @@ const StatusBar: React.FC = () => {
         </span>
       </div>
       <div className="flex items-center gap-4 text-[var(--statusbar-text)]">
+        {/* 专注模式按钮 */}
+        <button
+          onClick={toggleFocusMode}
+          className="flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+          title="进入专注模式 (Ctrl+Shift+F)"
+        >
+          <Focus size={12} />
+          <span>专注</span>
+        </button>
+
         <span 
           className="cursor-help relative group"
         >
