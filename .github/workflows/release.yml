@@ -38,6 +38,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Verify tag matches version
+        shell: bash
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="${GITHUB_REF_NAME#v}"
