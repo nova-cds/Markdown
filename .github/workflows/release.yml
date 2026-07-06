@@ -7,10 +7,45 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
-  release:
+  # 阶段 1: 验证 tag 并创建 release (只跑一次)
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.verify.outputs.tag }}
+      version: ${{ steps.verify.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches version
+        id: verify
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "::error::Tag v$TAG 与 package.json version $VERSION 不一致,请保持一致后再发版"
+            exit 1
+          fi
+          echo "Tag v$TAG 与 package.json version $VERSION 一致,继续发布"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.verify.outputs.tag }}" \
+            --title "MD Editor v${{ steps.verify.outputs.tag }}" \
+            --notes "See the assets to download and install this version." \
+            --target main
+
+  # 阶段 2: 三平台并行编译
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -37,17 +72,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Verify tag matches version
-        shell: bash
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="${GITHUB_REF_NAME#v}"
-          if [ "$VERSION" != "$TAG" ]; then
-            echo "::error::Tag v$TAG 与 package.json version $VERSION 不一致,请保持一致后再发版"
-            exit 1
-          fi
-          echo "Tag v$TAG 与 package.json version $VERSION 一致,继续发布"
 
       - name: Install dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -78,14 +102,69 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build and release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri app
+        run: |
+          npm run tauri build -- \
+            ${{ matrix.platform == 'windows-latest' && '--bundles nsis' || (matrix.platform == 'ubuntu-22.04' && '--bundles deb' || '--bundles app,dmg') }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-editor-${{ matrix.platform }}
+          path: |
+            src-tauri/target/release/bundle/**/*
+            src-tauri/target/release/*.exe
+
+  # 阶段 3: 把所有平台的产物上传到 release
+  publish:
+    name: Publish to release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: md-editor-windows-latest
+          path: artifacts/windows
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: md-editor-macos-latest
+          path: artifacts/macos
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: md-editor-ubuntu-22.04
+          path: artifacts/linux
+
+      - name: Upload Windows assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "MD Editor ${{ github.ref_name }}"
-          releaseBody: "See the assets to download and install this version."
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.platform == 'windows-latest' && '--bundles nsis' || (matrix.platform == 'ubuntu-22.04' && '--bundles deb' || '--bundles app,dmg') }}
+        run: |
+          TAG="v${{ needs.prepare.outputs.version }}"
+          find artifacts/windows -type f \( -name "*.exe" -o -name "*.msi" \) -exec \
+            gh release upload "$TAG" {} --clobber \;
+
+      - name: Upload macOS assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ needs.prepare.outputs.version }}"
+          find artifacts/macos -type f \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.app" \) -exec \
+            gh release upload "$TAG" {} --clobber \;
+
+      - name: Upload Linux assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ needs.prepare.outputs.version }}"
+          find artifacts/linux -type f \( -name "*.deb" -o -name "*.AppImage" \) -exec \
+            gh release upload "$TAG" {} --clobber \;
+
+      - name: Mark release as latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "v${{ needs.prepare.outputs.version }}" --draft=false
