@@ -18,8 +18,10 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+.trae/
 *.swp
 *.swo
+
 
 # OS
 .DS_Store
