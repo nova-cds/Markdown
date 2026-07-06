@@ -34,7 +34,12 @@ import ReplaceDialog from './ReplaceDialog';
 const VDITOR_CDN = './vditor';
 
 // debounce 工具函数
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): T {
+// 使用 interface 上的调用签名作为约束，借助 bivariance 兼容任意函数签名，
+// 同时通过 Parameters<T> 保留原函数的参数类型。
+interface AnyFunction {
+  (...args: never[]): void;
+}
+function debounce<T extends AnyFunction>(fn: T, delay: number): T {
   let timer: ReturnType<typeof setTimeout> | null = null;
   return ((...args: Parameters<T>) => {
     if (timer) clearTimeout(timer);
@@ -155,7 +160,7 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
       // 浏览器环境
       const { rootHandle, dirHandles } = useFileStore.getState();
 
-      if (!rootHandle) return null;
+      if (!rootHandle || typeof rootHandle === 'string') return null;
 
       // 从文档路径提取目录路径
       let docDirHandle: FileSystemDirectoryHandle = rootHandle;
@@ -166,7 +171,7 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
         if (lastSlash > 0) {
           const dirPath = fullPath.substring(0, lastSlash);
           const foundHandle = dirHandles.get(dirPath);
-          if (foundHandle) {
+          if (foundHandle && typeof foundHandle === 'object') {
             docDirHandle = foundHandle;
           }
         }
@@ -340,8 +345,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
   }, []);
 
   const getRootPath = useCallback(() => {
-    if (isTauriCached() && rootHandle) {
-      return rootHandle as unknown as string;
+    if (isTauriCached() && typeof rootHandle === 'string') {
+      return rootHandle;
     }
     return undefined;
   }, [rootHandle]);
@@ -627,7 +632,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
           mark: true,
           sup: true,
           sub: true,
-        } as any,
+        },
       },
       hint: {
         parse: false,
@@ -940,14 +945,14 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             }
           }
 
-          if (!rootHandle) {
+          if (!rootHandle || typeof rootHandle === 'string') {
             alert('请先打开文件夹后再粘贴图片。');
             return null;
           }
 
           try {
             const { dirHandles, refreshFileTree } = useFileStore.getState();
-            let docDirHandle: FileSystemDirectoryHandle = rootHandle!;
+            let docDirHandle: FileSystemDirectoryHandle = rootHandle;
 
             if (path.startsWith('file://')) {
               const fullPath = path.replace('file://', '');
@@ -955,7 +960,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
               if (lastSlash > 0) {
                 const dirPath = fullPath.substring(0, lastSlash);
                 const foundHandle = dirHandles.get(dirPath);
-                if (foundHandle) {
+                if (foundHandle && typeof foundHandle === 'object') {
                   docDirHandle = foundHandle;
                 }
               }
@@ -1029,7 +1034,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         vditorRef.current = vditor;
         isInitializedRef.current = true;
 
-        const vditorInternal = (vditor as any).vditor;
+        const vditorInternal = vditor.vditor;
 
         // 设置初始字数统计
         const initialValue = vditor.getValue();
@@ -1039,7 +1044,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
 
         // 手动启用上标和下标功能（等待官方发布 3.11.3）
         try {
-          const lute = (vditor as any).vditor?.lute;
+          const lute = vditor.vditor?.lute;
           if (lute) {
             lute.SetSup(true);
             lute.SetSub(true);
@@ -1071,8 +1076,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             setShowEmojiPicker(true);
           };
           emojiBtn.addEventListener('click', handleEmojiClick, true);
-          (vditorRef.current as any)._emojiClickHandler = handleEmojiClick;
-          (vditorRef.current as any)._emojiStyleEl = style;
+          vditorRef.current!._emojiClickHandler = handleEmojiClick;
+          vditorRef.current!._emojiStyleEl = style;
         }
 
         // 拦截indent按钮，处理任务列表全选缩进问题
@@ -1138,7 +1143,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             }, 100);
           };
           indentBtn.addEventListener('click', handleIndentClick, true);
-          (vditorRef.current as any)._indentClickHandler = handleIndentClick;
+          vditorRef.current!._indentClickHandler = handleIndentClick;
         }
 
         // 恢复预览模式
@@ -1217,7 +1222,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         resetElements?.forEach((el) => {
           el.addEventListener('scroll', handleScrollPosition);
         });
-        (vditorRef.current as any)._scrollPositionHandler = handleScrollPosition;
+        vditorRef.current!._scrollPositionHandler = handleScrollPosition;
 
         // 监听大纲显示/隐藏
         const outlineElement = containerRef.current?.querySelector(
@@ -1233,7 +1238,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             attributes: true,
             attributeFilter: ['style', 'class'],
           });
-          (vditorRef.current as any)._outlineObserver = outlineObserver;
+          vditorRef.current!._outlineObserver = outlineObserver;
 
           // 大纲增强功能：tooltip + 可调整宽度
           const setupOutlineEnhancements = () => {
@@ -1274,8 +1279,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
               }
             };
             outlineElement.addEventListener('mouseover', handleOutlineMouseOver);
-            (vditorRef.current as any)._outlineMouseOverHandler = handleOutlineMouseOver;
-            (vditorRef.current as any)._outlineMouseOverTarget = outlineElement;
+            vditorRef.current!._outlineMouseOverHandler = handleOutlineMouseOver;
+            vditorRef.current!._outlineMouseOverTarget = outlineElement;
 
             let isDragging = false;
             let startX = 0;
@@ -1332,9 +1337,9 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
 
-            (vditorRef.current as any)._outlineResizeMouseDown = handleMouseDown;
-            (vditorRef.current as any)._outlineResizeMouseMove = handleMouseMove;
-            (vditorRef.current as any)._outlineResizeMouseUp = handleMouseUp;
+            vditorRef.current!._outlineResizeMouseDown = handleMouseDown;
+            vditorRef.current!._outlineResizeMouseMove = handleMouseMove;
+            vditorRef.current!._outlineResizeMouseUp = handleMouseUp;
           };
 
           setupOutlineEnhancements();
@@ -1387,7 +1392,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             attributeFilter: ['style', 'class'],
           });
         }
-        (vditorRef.current as any)._modeObserver = modeObserver;
+        vditorRef.current!._modeObserver = modeObserver;
 
         // 监听预览模式变化
         const previewElement = containerRef.current?.querySelector(
@@ -1405,7 +1410,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
 
         if (previewElement) {
           const previewObserver = new MutationObserver(() => {
-            const vditorInternal = (vditorRef.current as any)?.vditor;
+            const vditorInternal = vditorRef.current?.vditor;
             const internalPreviewMode = vditorInternal?.currentPreviewMode;
 
             // 检测预览区域和编辑器区域的显示状态
@@ -1459,7 +1464,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
               attributeFilter: ['style', 'class'],
             });
           }
-          (vditorRef.current as any)._previewModeObserver = previewObserver;
+          vditorRef.current!._previewModeObserver = previewObserver;
         }
 
         // 链接点击拦截处理 - 绑定到vditor-reset元素
@@ -1560,21 +1565,21 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         if (vditorResetForLink) {
           vditorResetForLink.addEventListener(
             'click',
-            handleLinkClick as unknown as EventListener,
+            handleLinkClick as EventListener,
             true,
           );
         }
         if (vditorPreviewEl) {
           vditorPreviewEl.addEventListener(
             'click',
-            handleLinkClick as unknown as EventListener,
+            handleLinkClick as EventListener,
             true,
           );
         }
 
-        (vditorRef.current as any)._linkClickHandler = handleLinkClick;
-        (vditorRef.current as any)._linkClickReset = vditorResetForLink;
-        (vditorRef.current as any)._linkClickPreview = vditorPreviewEl;
+        vditorRef.current!._linkClickHandler = handleLinkClick;
+        vditorRef.current!._linkClickReset = vditorResetForLink;
+        vditorRef.current!._linkClickPreview = vditorPreviewEl;
 
         // 处理预览模式的嵌入内容
         const currentPath = path;
@@ -1653,7 +1658,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
 
               for (const link of allLinks) {
                 if (!link.parentElement) continue;
-                if ((link as any)._embedProcessed) continue;
+                if (link._embedProcessed) continue;
 
                 const href = link.getAttribute('href') || '';
                 const linkText = link.textContent?.trim() || '';
@@ -1665,7 +1670,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
                 if (!linkInfo) continue;
 
                 // 立即标记为已处理
-                (link as any)._embedProcessed = true;
+                link._embedProcessed = true;
                 pendingLinks.push({ link, linkInfo });
               }
             }
@@ -1756,7 +1761,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
             subtree: true,
           });
         }
-        (vditorRef.current as any)._previewObserver = previewObserver;
+        vditorRef.current!._previewObserver = previewObserver;
 
         // TOC 目录点击跳转处理（使用事件委托，绑定到容器）
         const handleTocClick = (e: MouseEvent) => {
@@ -1821,8 +1826,8 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         // 绑定到整个编辑器容器（捕获阶段）
         if (containerRef.current) {
           containerRef.current.addEventListener('click', handleTocClick as EventListener, true);
-          (vditorRef.current as any)._tocClickHandler = handleTocClick;
-          (vditorRef.current as any)._tocClickTarget = containerRef.current;
+          vditorRef.current!._tocClickHandler = handleTocClick;
+          vditorRef.current!._tocClickTarget = containerRef.current;
         }
 
         // 渲染 Mermaid 图表
@@ -1944,7 +1949,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         };
 
         containerRef.current?.addEventListener('keydown', tabKeydownHandler, true);
-        (vditorRef.current as any)._tabKeydownHandler = tabKeydownHandler;
+        vditorRef.current!._tabKeydownHandler = tabKeydownHandler;
 
         // Mermaid 渲染防抖
         let mermaidDebounceTimer: number | null = null;
@@ -2093,32 +2098,32 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         }
 
         // 保存引用以便清理
-        (vditorRef.current as any)._imageObserver = imageObserver;
-        (vditorRef.current as any)._handleKeyDown = handleKeyDown;
-        (vditorRef.current as any)._vditorReset = vditorResetForScroll;
+        vditorRef.current!._imageObserver = imageObserver;
+        vditorRef.current!._handleKeyDown = handleKeyDown;
+        vditorRef.current!._vditorReset = vditorResetForScroll;
       },
     });
 
     return () => {
       if (vditorRef.current) {
-        const imageObserver = (vditorRef.current as any)._imageObserver;
-        const handleKeyDown = (vditorRef.current as any)._handleKeyDown;
-        const vditorReset = (vditorRef.current as any)._vditorReset;
-        const tabKeydownHandler = (vditorRef.current as any)._tabKeydownHandler;
-        const tocClickHandler = (vditorRef.current as any)._tocClickHandler;
-        const tocClickTarget = (vditorRef.current as any)._tocClickTarget;
-        const linkClickHandler = (vditorRef.current as any)._linkClickHandler;
-        const linkClickReset = (vditorRef.current as any)._linkClickReset;
-        const linkClickPreview = (vditorRef.current as any)._linkClickPreview;
-        const previewObserver = (vditorRef.current as any)._previewObserver;
-        const outlineObserver = (vditorRef.current as any)._outlineObserver;
-        const outlineMouseOverHandler = (vditorRef.current as any)._outlineMouseOverHandler;
-        const outlineMouseOverTarget = (vditorRef.current as any)._outlineMouseOverTarget;
-        const outlineResizeMouseDown = (vditorRef.current as any)._outlineResizeMouseDown;
-        const outlineResizeMouseMove = (vditorRef.current as any)._outlineResizeMouseMove;
-        const outlineResizeMouseUp = (vditorRef.current as any)._outlineResizeMouseUp;
-        const modeObserver = (vditorRef.current as any)._modeObserver;
-        const previewModeObserver = (vditorRef.current as any)._previewModeObserver;
+        const imageObserver = vditorRef.current!._imageObserver;
+        const handleKeyDown = vditorRef.current!._handleKeyDown;
+        const vditorReset = vditorRef.current!._vditorReset;
+        const tabKeydownHandler = vditorRef.current!._tabKeydownHandler;
+        const tocClickHandler = vditorRef.current!._tocClickHandler;
+        const tocClickTarget = vditorRef.current!._tocClickTarget;
+        const linkClickHandler = vditorRef.current!._linkClickHandler;
+        const linkClickReset = vditorRef.current!._linkClickReset;
+        const linkClickPreview = vditorRef.current!._linkClickPreview;
+        const previewObserver = vditorRef.current!._previewObserver;
+        const outlineObserver = vditorRef.current!._outlineObserver;
+        const outlineMouseOverHandler = vditorRef.current!._outlineMouseOverHandler;
+        const outlineMouseOverTarget = vditorRef.current!._outlineMouseOverTarget;
+        const outlineResizeMouseDown = vditorRef.current!._outlineResizeMouseDown;
+        const outlineResizeMouseMove = vditorRef.current!._outlineResizeMouseMove;
+        const outlineResizeMouseUp = vditorRef.current!._outlineResizeMouseUp;
+        const modeObserver = vditorRef.current!._modeObserver;
+        const previewModeObserver = vditorRef.current!._previewModeObserver;
 
         if (imageObserver) imageObserver.disconnect();
         if (previewObserver) previewObserver.disconnect();
@@ -2139,7 +2144,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         if (previewModeObserver) previewModeObserver.disconnect();
 
         // 移除滚动监听
-        const scrollPositionHandler = (vditorRef.current as any)._scrollPositionHandler;
+        const scrollPositionHandler = vditorRef.current!._scrollPositionHandler;
         if (scrollPositionHandler) {
           const resetEls = containerRef.current?.querySelectorAll('.vditor-reset');
           resetEls?.forEach((el) => {

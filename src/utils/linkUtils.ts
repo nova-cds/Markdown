@@ -94,14 +94,14 @@ export async function readMdFileContent(
       const { useFileStore } = await import('../stores/fileStore');
       const { rootHandle, dirHandles } = useFileStore.getState();
 
-      if (!rootHandle) {
+      if (!rootHandle || typeof rootHandle !== 'object') {
         return { content: '', error: '未打开文件夹' };
       }
 
       const normalizedPath = filePath.replace(/\\/g, '/');
       const pathParts = normalizedPath.split('/').filter((p) => p);
 
-      let currentDir = rootHandle;
+      let currentDir: FileSystemDirectoryHandle = rootHandle;
 
       for (let i = 0; i < pathParts.length - 1; i++) {
         const dirName = pathParts[i];
@@ -109,7 +109,7 @@ export async function readMdFileContent(
           currentDir = await currentDir.getDirectoryHandle(dirName);
         } catch {
           const cachedDir = dirHandles.get(pathParts.slice(0, i + 1).join('/'));
-          if (cachedDir) {
+          if (cachedDir && typeof cachedDir === 'object') {
             currentDir = cachedDir;
           } else {
             return { content: '', error: `目录不存在: ${dirName}` };

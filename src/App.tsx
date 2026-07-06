@@ -13,7 +13,7 @@ function App() {
   useEffect(() => {
     const init = async () => {
       await waitForTauri();
-      (window as any).__TAURI_READY__ = true;
+      window.__TAURI_READY__ = true;
       setIsReady(true);
     };
 
@@ -43,7 +43,7 @@ function App() {
           file.name.endsWith('.txt')
         ) {
           const content = await file.text();
-          const filePath = (file as any).path || file.name;
+          const filePath = file.path || file.name;
           openDocument(`file://${filePath}`, content, false);
         }
       }

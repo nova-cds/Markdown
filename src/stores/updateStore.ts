@@ -60,5 +60,5 @@ export const useUpdateStore = create<UpdateState>()(
 );
 
 if (typeof window !== 'undefined') {
-  (window as any).useUpdateStore = useUpdateStore;
+  window.useUpdateStore = useUpdateStore;
 }

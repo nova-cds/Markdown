@@ -82,8 +82,8 @@ export const Sidebar: React.FC = () => {
 
   // 获取 Tauri 环境下的完整根路径
   const getFullRootPath = useCallback(() => {
-    if (isTauriCached() && rootHandle) {
-      return rootHandle as unknown as string;
+    if (isTauriCached() && typeof rootHandle === 'string') {
+      return rootHandle;
     }
     return rootPath;
   }, [rootHandle, rootPath]);
@@ -97,7 +97,7 @@ export const Sidebar: React.FC = () => {
       if (isTauriCached()) {
         const tree = await readDirectoryTauri(fullRoot);
         setFileTree(tree);
-      } else if (rootHandle) {
+      } else if (rootHandle && typeof rootHandle === 'object') {
         const tree = await readDirectoryRecursive(rootHandle, rootPath!);
         setFileTree(tree);
       }
@@ -263,7 +263,7 @@ export const Sidebar: React.FC = () => {
             children = await readDirectoryTauri(path);
           } else {
             const dirHandle = dirHandles.get(path);
-            if (dirHandle) {
+            if (dirHandle && typeof dirHandle === 'object') {
               children = await readDirectoryRecursive(dirHandle, path);
             } else {
               children = [];
@@ -382,7 +382,7 @@ export const Sidebar: React.FC = () => {
       } else {
         // 浏览器环境
         const dirHandle = dirHandles.get(parentPath) || rootHandle;
-        if (!dirHandle) {
+        if (!dirHandle || typeof dirHandle !== 'object') {
           alert('无法获取目录句柄，请重新打开文件夹');
           setNewFileState(null);
           return;
@@ -395,7 +395,9 @@ export const Sidebar: React.FC = () => {
 
         setFileHandle(finalName, fileHandle);
 
-        const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
+        const tree = rootHandle && typeof rootHandle === 'object'
+          ? await readDirectoryRecursive(rootHandle, rootPath!)
+          : [];
         setFileTree(tree);
 
         const docPath = `file://${parentPath}/${finalName}`;
@@ -457,7 +459,7 @@ export const Sidebar: React.FC = () => {
       } else {
         // 浏览器环境
         const dirHandle = dirHandles.get(parentPath) || rootHandle;
-        if (!dirHandle) {
+        if (!dirHandle || typeof dirHandle !== 'object') {
           alert('无法获取目录句柄，请重新打开文件夹');
           setNewDirState(null);
           return;
@@ -466,7 +468,9 @@ export const Sidebar: React.FC = () => {
         const newDirHandle = await dirHandle.getDirectoryHandle(dirName, { create: true });
         setDirHandle(`${parentPath}/${dirName}`, newDirHandle);
 
-        const tree = await readDirectoryRecursive(rootHandle!, rootPath!);
+        const tree = rootHandle && typeof rootHandle === 'object'
+          ? await readDirectoryRecursive(rootHandle, rootPath!)
+          : [];
         setFileTree(tree);
       }
 
@@ -523,7 +527,7 @@ export const Sidebar: React.FC = () => {
           } else {
             // 浏览器环境
             const dirHandle = dirHandles.get(parentPath) || rootHandle;
-            if (!dirHandle) {
+            if (!dirHandle || typeof dirHandle !== 'object') {
               alert('无法获取目录句柄，请重新打开文件夹');
               setRenameState(null);
               return;
@@ -559,7 +563,7 @@ export const Sidebar: React.FC = () => {
               setFileHandle(newEntryPath, newFileHandle);
             }
 
-            if (rootHandle && rootPath) {
+            if (rootHandle && typeof rootHandle === 'object' && rootPath) {
               const tree = await readDirectoryRecursive(rootHandle, rootPath);
               setFileTree(tree);
             }
@@ -579,10 +583,10 @@ export const Sidebar: React.FC = () => {
     sourceDir: FileSystemDirectoryHandle,
     targetDir: FileSystemDirectoryHandle,
   ) => {
-    // @ts-expect-error - FileSystemDirectoryHandle.values() is part of File System Access API
     for await (const entry of sourceDir.values()) {
       if (entry.kind === 'file') {
-        const file = await entry.getFile();
+        const fileHandle = entry as FileSystemFileHandle;
+        const file = await fileHandle.getFile();
         const content = await file.text();
         const newFileHandle = await targetDir.getFileHandle(entry.name, { create: true });
         const writable = await newFileHandle.createWritable();
@@ -937,7 +941,7 @@ export const Sidebar: React.FC = () => {
                       name: rootPath,
                       path: getFullRootPath() || rootPath, // 使用完整路径
                       isDir: true,
-                      handle: rootHandle || undefined,
+                      handle: rootHandle && typeof rootHandle === 'object' ? rootHandle : undefined,
                     })
                   }
                   onMouseEnter={() => setHoveredPath(rootPath)}

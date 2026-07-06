@@ -14,8 +14,16 @@ interface FileState {
   selectedPath: string | null;
   isLoading: boolean;
   fileHandles: Map<string, FileSystemFileHandle>;
-  dirHandles: Map<string, FileSystemDirectoryHandle>; // 路径 -> 目录句柄
-  rootHandle: FileSystemDirectoryHandle | null;
+  /**
+   * 路径 -> 目录句柄
+   * 浏览器环境下存 FileSystemDirectoryHandle，Tauri 环境下存路径字符串
+   */
+  dirHandles: Map<string, FileSystemDirectoryHandle | string>;
+  /**
+   * 根目录句柄
+   * 浏览器环境下为 FileSystemDirectoryHandle，Tauri 环境下为路径字符串
+   */
+  rootHandle: FileSystemDirectoryHandle | string | null;
 
   setRootPath: (path: string) => void;
   setFileTree: (tree: TreeNode[]) => void;
@@ -24,9 +32,9 @@ interface FileState {
   refreshFileTree: () => Promise<void>;
   setFileHandle: (fileName: string, handle: FileSystemFileHandle) => void;
   getFileHandle: (fileName: string) => FileSystemFileHandle | undefined;
-  setDirHandle: (path: string, handle: FileSystemDirectoryHandle) => void;
-  getDirHandle: (path: string) => FileSystemDirectoryHandle | undefined;
-  setRootHandle: (handle: FileSystemDirectoryHandle | null) => void;
+  setDirHandle: (path: string, handle: FileSystemDirectoryHandle | string) => void;
+  getDirHandle: (path: string) => FileSystemDirectoryHandle | string | undefined;
+  setRootHandle: (handle: FileSystemDirectoryHandle | string | null) => void;
   clearAll: () => void; // 新增：清理所有状态
 }
 
@@ -55,9 +63,16 @@ export const useFileStore = create<FileState>((set, get) => ({
 
   // 刷新文件树 - 重新扫描目录
   refreshFileTree: async () => {
-    const { rootHandle, rootPath, dirHandles } = get();
+    const { rootHandle, rootPath, dirHandles: _dirHandles } = get();
 
     if (!rootHandle || !rootPath) {
+      return;
+    }
+
+    // Tauri 环境下 rootHandle 为路径字符串，浏览器环境下为 FileSystemDirectoryHandle
+    // 仅在浏览器环境下支持通过句柄刷新
+    if (typeof rootHandle !== 'object') {
+      set({ isLoading: false });
       return;
     }
 
@@ -74,7 +89,7 @@ export const useFileStore = create<FileState>((set, get) => ({
         newDirHandles.set(basePath, dirHandle);
         set({ dirHandles: newDirHandles });
 
-        for await (const entry of (dirHandle as any).values()) {
+        for await (const entry of dirHandle.values()) {
           const nodePath = `${basePath}/${entry.name}`;
 
           if (
@@ -85,7 +100,7 @@ export const useFileStore = create<FileState>((set, get) => ({
               name: entry.name,
               path: nodePath,
               isDir: false,
-              handle: entry,
+              handle: entry as FileSystemFileHandle,
             });
           } else if (entry.kind === 'directory') {
             const childNodes = await readDirectoryRecursive(
@@ -96,7 +111,7 @@ export const useFileStore = create<FileState>((set, get) => ({
               name: entry.name,
               path: nodePath,
               isDir: true,
-              handle: entry,
+              handle: entry as FileSystemDirectoryHandle,
               children: childNodes,
             });
           }
@@ -130,7 +145,7 @@ export const useFileStore = create<FileState>((set, get) => ({
     return get().fileHandles.get(fileName);
   },
 
-  setDirHandle: (path: string, handle: FileSystemDirectoryHandle) => {
+  setDirHandle: (path: string, handle: FileSystemDirectoryHandle | string) => {
     const { dirHandles } = get();
     const newHandles = new Map(dirHandles);
     newHandles.set(path, handle);
@@ -141,7 +156,7 @@ export const useFileStore = create<FileState>((set, get) => ({
     return get().dirHandles.get(path);
   },
 
-  setRootHandle: (handle: FileSystemDirectoryHandle | null) => {
+  setRootHandle: (handle: FileSystemDirectoryHandle | string | null) => {
     set({ rootHandle: handle });
   },
 

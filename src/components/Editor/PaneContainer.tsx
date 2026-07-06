@@ -205,7 +205,7 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
         );
         if (files.length > 0) {
           const file = files[0];
-          const filePath = (file as any).path;
+          const filePath = file.path;
           if (filePath) {
             docPath = `file://${filePath}`;
             content = await file.text();

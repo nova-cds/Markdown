@@ -68,17 +68,19 @@ export function useFileChangeDetection(): void {
           }
 
           if (!dirHandle && dirPath === filePath.split(/[/\\]/)[0]) {
-            // 如果是根目录，使用 rootHandle
-            dirHandle = rootHandle || undefined;
+            // 如果是根目录，使用 rootHandle（仅浏览器环境下为 FileSystemDirectoryHandle）
+            if (rootHandle && typeof rootHandle === 'object') {
+              dirHandle = rootHandle;
+            }
           }
 
-          if (dirHandle) {
+          if (dirHandle && typeof dirHandle === 'object') {
             try {
               const fileHandle = await dirHandle.getFileHandle(fileName);
               const file = await fileHandle.getFile();
               const content = await file.text();
               return content;
-            } catch (e) {
+            } catch (_e) {
               // 从目录句柄读取文件失败
             }
           }

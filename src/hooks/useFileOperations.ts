@@ -89,7 +89,7 @@ export const useFileOperations = () => {
 
       setDirHandle(basePath, dirHandle);
 
-      for await (const entry of (dirHandle as any).values()) {
+      for await (const entry of dirHandle.values()) {
         const nodePath = `${basePath}/${entry.name}`;
 
         if (
@@ -100,17 +100,18 @@ export const useFileOperations = () => {
             name: entry.name,
             path: nodePath,
             isDir: false,
-            handle: entry,
+            handle: entry as FileSystemFileHandle,
           });
         } else if (entry.kind === 'directory') {
+          const dirEntry = entry as FileSystemDirectoryHandle;
           // 保存子目录的 handle，用于延迟加载
-          setDirHandle(nodePath, entry as FileSystemDirectoryHandle);
+          setDirHandle(nodePath, dirEntry);
           // 不递归读取子目录，延迟加载
           nodes.push({
             name: entry.name,
             path: nodePath,
             isDir: true,
-            handle: entry,
+            handle: dirEntry,
             children: [], // 空数组，表示未加载
           });
         }
@@ -133,7 +134,7 @@ export const useFileOperations = () => {
       const { readDir } = await import('@tauri-apps/plugin-fs');
       const nodes: TreeNode[] = [];
 
-      setDirHandle(dirPath, dirPath as any);
+      setDirHandle(dirPath, dirPath);
 
       try {
         const entries = await readDir(dirPath);
@@ -196,7 +197,7 @@ export const useFileOperations = () => {
 
         // 设置新状态
         setRootPath(folderName);
-        setRootHandle(folderPath as any);
+        setRootHandle(folderPath);
 
         const tree = await readDirectoryTauri(folderPath);
         setFileTree(tree);
@@ -205,13 +206,13 @@ export const useFileOperations = () => {
       // 浏览器环境：使用 File System Access API
       if ('showDirectoryPicker' in window) {
         try {
-          const dirHandle = await (window as any).showDirectoryPicker();
+          const dirHandle = await window.showDirectoryPicker!();
           setRootPath(dirHandle.name);
           setRootHandle(dirHandle);
 
           const tree = await readDirectoryRecursive(dirHandle, dirHandle.name);
           setFileTree(tree);
-        } catch (err) {
+        } catch (_err) {
           // 用户取消了选择
         }
       } else {

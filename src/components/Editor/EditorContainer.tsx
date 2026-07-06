@@ -4,7 +4,9 @@ import { PaneContainer } from './PaneContainer';
 import { useFileOperations } from '../../hooks/useFileOperations';
 import { FilePlus, FileText, FolderOpen } from 'lucide-react';
 
-const handleNewFile = (openDocument: any) => {
+type OpenDocumentFn = (path: string, content?: string, isNew?: boolean) => void;
+
+const handleNewFile = (openDocument: OpenDocumentFn) => {
   const fileName = `新建文档-${Date.now()}.md`;
   const content = `# 新建文档\n\n在这里开始写作...\n`;
   openDocument(fileName, content, true);

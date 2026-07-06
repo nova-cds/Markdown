@@ -219,7 +219,7 @@ export function useSaveAsFile() {
     } else {
       try {
         if ('showSaveFilePicker' in window) {
-          const handle = await (window as any).showSaveFilePicker({
+          const handle = await window.showSaveFilePicker!({
             suggestedName: fileName,
             types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'] } }],
           });

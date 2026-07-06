@@ -23,19 +23,6 @@ import { useFileOperations } from '../../hooks/useFileOperations';
 import { UpdateNotification } from '../Update/UpdateNotification';
 import { CloseTabConfirm } from '../Editor/CloseTabConfirm';
 
-declare global {
-  interface Window {
-    __TAURI__?: {
-      window: {
-        getCurrentWindow: () => any;
-      };
-      event: {
-        listen: (event: string, callback: (payload: any) => void) => () => void;
-      };
-    };
-  }
-}
-
 const getTauriWindow = () => {
   if (typeof window !== 'undefined' && window.__TAURI__?.window) {
     return window.__TAURI__.window.getCurrentWindow();
@@ -74,10 +61,15 @@ export const TitleBar: React.FC = () => {
     const win = getTauriWindow();
     if (win && window.__TAURI__?.event) {
       win.isMaximized().then(setIsMaximized);
-      const unlisten = window.__TAURI__.event.listen('tauri://resize', async () => {
+      let unlistenFn: (() => void) | null = null;
+      window.__TAURI__.event.listen('tauri://resize', async () => {
         setIsMaximized(await win.isMaximized());
+      }).then((fn) => {
+        unlistenFn = fn;
       });
-      return unlisten;
+      return () => {
+        unlistenFn?.();
+      };
     }
   }, []);
 
