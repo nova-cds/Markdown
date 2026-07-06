@@ -64,12 +64,12 @@ export function getParentPath(path: string): string {
  */
 export function joinPath(...parts: string[]): string {
   if (parts.length === 0) return '';
-  
+
   const joined = parts
-    .filter(part => part !== '')
-    .map(part => part.replace(/\\/g, '/'))
+    .filter((part) => part !== '')
+    .map((part) => part.replace(/\\/g, '/'))
     .join('/');
-  
+
   // 规范化路径：移除多余的斜杠
   return joined.replace(/\/+/g, '/');
 }

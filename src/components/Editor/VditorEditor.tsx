@@ -3,11 +3,30 @@ import Vditor from 'vditor';
 import 'vditor/dist/index.css';
 import './vditor-styles.css';
 import '../../styles/embed.css';
-import { useEditorStore, useFileStore, useSettingsStore, EditorMode, PreviewMode } from '../../stores';
+import {
+  useEditorStore,
+  useFileStore,
+  useSettingsStore,
+  EditorMode,
+  PreviewMode,
+} from '../../stores';
 import { useSaveToFile, useSaveAsFile } from '../../hooks/useAutoSave';
 import { isTauriCached, waitForTauri } from '../../utils/platform';
-import { isLocalMdFile, resolveDocPath, readMdFileContent, getFileDisplayName, normalizePath, getFileName } from '../../utils/linkUtils';
-import { shouldRenderEmbed, processEmbedsInMarkdown, createEmbedContainer, createEmbedWarning, EmbedContext } from '../../utils/embedUtils';
+import {
+  isLocalMdFile,
+  resolveDocPath,
+  readMdFileContent,
+  getFileDisplayName,
+  normalizePath,
+  getFileName,
+} from '../../utils/linkUtils';
+import {
+  shouldRenderEmbed,
+  processEmbedsInMarkdown,
+  createEmbedContainer,
+  createEmbedWarning,
+  EmbedContext,
+} from '../../utils/embedUtils';
 import EmojiPicker from './EmojiPicker';
 import ReplaceDialog from './ReplaceDialog';
 
@@ -35,64 +54,64 @@ let hasShownTableTip = false;
 // 计算纯文本字数（去除 markdown 语法标记）
 function countPlainText(md: string): number {
   if (!md) return 0;
-  
+
   let text = md;
-  
+
   // 移除代码块
   text = text.replace(/```[\s\S]*?```/g, '');
-  
+
   // 移除行内代码
   text = text.replace(/`[^`]+`/g, '');
-  
+
   // 移除图片 ![alt](url)
   text = text.replace(/!\[[^\]]*\]\([^)]+\)/g, '');
-  
+
   // 移除链接 [text](url) → text
   text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
-  
+
   // 移除粗体 **text** 或 __text__
   text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
   text = text.replace(/__([^_]+)__/g, '$1');
-  
+
   // 移除斜体 *text* 或 _text_
   text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '$1');
   text = text.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '$1');
-  
+
   // 移除删除线 ~~text~~
   text = text.replace(/~~([^~]+)~~/g, '$1');
-  
+
   // 移除高亮 ==text==
   text = text.replace(/==([^=]+)==/g, '$1');
-  
+
   // 移除上标 ^text^
   text = text.replace(/\^([^^\n]+)\^/g, '$1');
-  
+
   // 移除下标 ~text~ (单个波浪线，排除删除线)
   text = text.replace(/(?<!~)~([^~\n]+)~(?!~)/g, '$1');
-  
+
   // 移除标题标记
   text = text.replace(/^#{1,6}\s*/gm, '');
-  
+
   // 移除列表标记
   text = text.replace(/^[\t ]*[-*+]\s+/gm, '');
   text = text.replace(/^[\t ]*\d+\.\s+/gm, '');
-  
+
   // 移除引用标记
   text = text.replace(/^>\s*/gm, '');
-  
+
   // 移除水平线
   text = text.replace(/^[-*_]{3,}$/gm, '');
-  
+
   // 移除 [toc]
   text = text.replace(/\[toc\]/gi, '');
-  
+
   // 移除 HTML 标签
   text = text.replace(/<[^>]+>/g, '');
-  
+
   // 移除多余空白字符
   text = text.replace(/[\n\r]+/g, '');
   text = text.trim();
-  
+
   return text.length;
 }
 
@@ -110,12 +129,12 @@ function fileToBase64(file: File): Promise<string> {
 async function loadLocalImage(imageSrc: string, docPath: string): Promise<string | null> {
   // 解析图片路径
   const cleanSrc = imageSrc.replace(/^\.\//, '');
-  
+
   try {
     if (isTauriCached()) {
       // Tauri 环境：读取文件转为 blob URL
       const { readFile } = await import('@tauri-apps/plugin-fs');
-      
+
       // 从文档路径提取目录路径
       let docDir = '';
       if (docPath.startsWith('file://')) {
@@ -125,7 +144,7 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
           docDir = fullPath.substring(0, lastSlash);
         }
       }
-      
+
       const normalizedSrc = cleanSrc.replace(/\//g, '\\');
       const imagePath = `${docDir}\\${normalizedSrc}`;
       const imageData = await readFile(imagePath);
@@ -135,12 +154,12 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
     } else {
       // 浏览器环境
       const { rootHandle, dirHandles } = useFileStore.getState();
-      
+
       if (!rootHandle) return null;
-      
+
       // 从文档路径提取目录路径
       let docDirHandle: FileSystemDirectoryHandle = rootHandle;
-      
+
       if (docPath.startsWith('file://')) {
         const fullPath = docPath.replace('file://', '');
         const lastSlash = fullPath.lastIndexOf('/');
@@ -152,19 +171,19 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
           }
         }
       }
-      
+
       const parts = cleanSrc.split('/');
-      
+
       // 遍历路径找到图片文件
       let currentDir = docDirHandle;
       for (let i = 0; i < parts.length - 1; i++) {
         currentDir = await currentDir.getDirectoryHandle(parts[i]);
       }
-      
+
       const fileName = parts[parts.length - 1];
       const fileHandle = await currentDir.getFileHandle(fileName);
       const file = await fileHandle.getFile();
-      
+
       // 创建blob URL
       const blobUrl = URL.createObjectURL(file);
       return blobUrl;
@@ -178,14 +197,14 @@ async function loadLocalImage(imageSrc: string, docPath: string): Promise<string
 function handleLocalImage(img: HTMLImageElement, docPath: string) {
   const src = img.getAttribute('src');
   if (!src) return;
-  
+
   // 只处理相对路径的本地图片
   if (src.startsWith('http') || src.startsWith('data:') || src.startsWith('blob:')) return;
-  
+
   // 标记为正在处理，避免重复处理
   if (img.dataset.loading === 'true') return;
   img.dataset.loading = 'true';
-  
+
   loadLocalImage(src, docPath).then((blobUrl) => {
     if (blobUrl) {
       img.src = blobUrl;
@@ -197,13 +216,13 @@ function handleLocalImage(img: HTMLImageElement, docPath: string) {
 // 处理容器中的所有本地图片
 function processLocalImages(container: HTMLElement, docPath: string) {
   const imgs = container.querySelectorAll('img');
-  imgs.forEach(img => handleLocalImage(img, docPath));
+  imgs.forEach((img) => handleLocalImage(img, docPath));
 }
 
 function showTableShortcutTip() {
   if (hasShownTableTip) return;
   hasShownTableTip = true;
-  
+
   if (tableTipElement) {
     tableTipElement.remove();
     tableTipElement = null;
@@ -211,7 +230,7 @@ function showTableShortcutTip() {
   if (tableTipTimeout) {
     clearTimeout(tableTipTimeout);
   }
-  
+
   const tip = document.createElement('div');
   tip.className = 'table-shortcut-tip';
   tip.innerHTML = `
@@ -237,7 +256,7 @@ function showTableShortcutTip() {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     max-width: 280px;
   `;
-  
+
   const style = document.createElement('style');
   style.textContent = `
     .table-shortcut-tip .tip-title {
@@ -268,7 +287,7 @@ function showTableShortcutTip() {
   document.head.appendChild(style);
   document.body.appendChild(tip);
   tableTipElement = tip;
-  
+
   tableTipTimeout = window.setTimeout(() => {
     if (tableTipElement) {
       tableTipElement.style.opacity = '0';
@@ -304,7 +323,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
   const processedEmbedsRef = useRef<Set<string>>(new Set());
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showReplaceDialog, setShowReplaceDialog] = useState(false);
-  
+
   // 字数统计节流 - 使用ref保存debounce函数
   const wordCountDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const updateWordCountDebounced = useCallback(() => {
@@ -319,76 +338,78 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
       store.setWordCount(plainText);
     }, 300);
   }, []);
-  
+
   const getRootPath = useCallback(() => {
     if (isTauriCached() && rootHandle) {
       return rootHandle as unknown as string;
     }
     return undefined;
   }, [rootHandle]);
-  
+
   const pathRef = useRef(path);
   const openDocumentRef = useRef(openDocument);
   const setOutlineVisibleRef = useRef(setOutlineVisible);
   const setEditorModeRef = useRef(setEditorMode);
   const setScrollPositionRef = useRef(setScrollPosition);
   const setPreviewModeRef = useRef(setPreviewMode);
-  
+
   useEffect(() => {
     pathRef.current = path;
   }, [path]);
-  
+
   useEffect(() => {
     openDocumentRef.current = openDocument;
   }, [openDocument]);
-  
+
   useEffect(() => {
     setOutlineVisibleRef.current = setOutlineVisible;
   }, [setOutlineVisible]);
-  
+
   useEffect(() => {
     setEditorModeRef.current = setEditorMode;
   }, [setEditorMode]);
-  
+
   useEffect(() => {
     setScrollPositionRef.current = setScrollPosition;
   }, [setScrollPosition]);
-  
+
   useEffect(() => {
     setPreviewModeRef.current = setPreviewMode;
   }, [setPreviewMode]);
-  
+
   // Ctrl+/ 快捷键 - 在IR和SV模式间切换
   useEffect(() => {
     const handleModeSwitch = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === '/') {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const toolbar = containerRef.current?.querySelector('.vditor-toolbar');
         if (!toolbar) return;
-        
+
         const currentMode = vditorRef.current?.getCurrentMode();
         const targetMode = currentMode === 'ir' ? 'sv' : 'ir';
-        
+
         // 直接点击工具栏中的模式按钮
         const buttons = toolbar.querySelectorAll('button');
         for (const btn of buttons) {
           const text = btn.textContent?.trim() || '';
-          
-          if ((targetMode === 'ir' && text.includes('即时渲染')) ||
-              (targetMode === 'sv' && text.includes('分屏预览'))) {
+
+          if (
+            (targetMode === 'ir' && text.includes('即时渲染')) ||
+            (targetMode === 'sv' && text.includes('分屏预览'))
+          ) {
             (btn as HTMLElement).click();
             return;
           }
         }
       }
     };
-    
+
     window.addEventListener('keydown', handleModeSwitch, true);
     return () => window.removeEventListener('keydown', handleModeSwitch, true);
   }, []);
-  
+
   // Ctrl+H 快捷键 - 打开查找替换弹窗
   useEffect(() => {
     const handleFindReplace = (e: KeyboardEvent) => {
@@ -398,11 +419,11 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         setShowReplaceDialog(true);
       }
     };
-    
+
     window.addEventListener('keydown', handleFindReplace, true);
     return () => window.removeEventListener('keydown', handleFindReplace, true);
   }, []);
-  
+
   // Ctrl+S 快捷键 - 智能保存
   useEffect(() => {
     const handleSave = (e: KeyboardEvent) => {
@@ -413,11 +434,11 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         saveToFile();
       }
     };
-    
+
     window.addEventListener('keydown', handleSave, true);
     return () => window.removeEventListener('keydown', handleSave, true);
   }, [saveToFile]);
-  
+
   // Ctrl+Shift+S 快捷键 - 强制另存为
   useEffect(() => {
     const handleSaveAs = (e: KeyboardEvent) => {
@@ -428,41 +449,47 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         saveAsFile();
       }
     };
-    
+
     window.addEventListener('keydown', handleSaveAs, true);
     return () => window.removeEventListener('keydown', handleSaveAs, true);
   }, [saveAsFile]);
-  
+
   // 编辑区拖放文件处理
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    
+
     const handleDrop = async (e: DragEvent) => {
       const files = e.dataTransfer?.files;
       if (!files || files.length === 0) return;
-      
+
       // 检查是否是MD文件
       const mdFiles = Array.from(files).filter(
-        file => file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')
+        (file) =>
+          file.name.endsWith('.md') ||
+          file.name.endsWith('.markdown') ||
+          file.name.endsWith('.txt'),
       );
-      
+
       if (mdFiles.length > 0) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         for (const file of mdFiles) {
           const content = await file.text();
           openDocument(`file://${file.name}`, content, false);
         }
       }
     };
-    
+
     const handleDragOver = (e: DragEvent) => {
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
         const hasMdFile = Array.from(files).some(
-          file => file.name.endsWith('.md') || file.name.endsWith('.markdown') || file.name.endsWith('.txt')
+          (file) =>
+            file.name.endsWith('.md') ||
+            file.name.endsWith('.markdown') ||
+            file.name.endsWith('.txt'),
         );
         if (hasMdFile) {
           e.preventDefault();
@@ -470,54 +497,62 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         }
       }
     };
-    
+
     container.addEventListener('drop', handleDrop, true);
     container.addEventListener('dragover', handleDragOver, true);
-    
+
     return () => {
       container.removeEventListener('drop', handleDrop, true);
       container.removeEventListener('dragover', handleDragOver, true);
     };
   }, [openDocument]);
 
-  const handleLocalMdLinkClick = useCallback(async (href: string): Promise<boolean> => {
-    if (!href || !isLocalMdFile(href)) {
-      return false;
-    }
-    
-    const rootPath = getRootPath();
-    const resolvedPath = resolveDocPath(href, pathRef.current, rootPath);
-    const docPath = `file://${resolvedPath}`;
-    
-    try {
-      const result = await readMdFileContent(resolvedPath);
-      
-      if (result.content !== undefined) {
-        openDocumentRef.current(docPath, result.content, false);
-        return true;
-      } else {
-        alert(`无法打开文档: ${result.error || '文件不存在'}`);
+  const handleLocalMdLinkClick = useCallback(
+    async (href: string): Promise<boolean> => {
+      if (!href || !isLocalMdFile(href)) {
+        return false;
       }
-    } catch (err) {
-      alert(`打开文档失败: ${err}`);
-    }
-    
-    return false;
-  }, [getRootPath]);
+
+      const rootPath = getRootPath();
+      const resolvedPath = resolveDocPath(href, pathRef.current, rootPath);
+      const docPath = `file://${resolvedPath}`;
+
+      try {
+        const result = await readMdFileContent(resolvedPath);
+
+        if (result.content !== undefined) {
+          openDocumentRef.current(docPath, result.content, false);
+          return true;
+        } else {
+          alert(`无法打开文档: ${result.error || '文件不存在'}`);
+        }
+      } catch (err) {
+        alert(`打开文档失败: ${err}`);
+      }
+
+      return false;
+    },
+    [getRootPath],
+  );
 
   // 监听内容延迟加载（只对未初始化的文档）
   useEffect(() => {
     if (isInitializedRef.current) return;
     if (currentPathRef.current === path && contentRef.current) return;
-    
+
     const unsubscribe = useEditorStore.subscribe((state) => {
       const doc = state.documents[path];
-      if (doc?.content && !isInitializedRef.current && currentPathRef.current === path && !contentRef.current) {
+      if (
+        doc?.content &&
+        !isInitializedRef.current &&
+        currentPathRef.current === path &&
+        !contentRef.current
+      ) {
         // 内容已加载，触发重新初始化
-        setInitKey(k => k + 1);
+        setInitKey((k) => k + 1);
       }
     });
-    
+
     return unsubscribe;
   }, [path]);
 
@@ -526,29 +561,32 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
     const unsubscribe = useEditorStore.subscribe((state, prevState) => {
       const doc = state.documents[path];
       const prevDoc = prevState.documents[path];
-      
-      if (doc && prevDoc && 
-          doc.content !== prevDoc.content && 
-          !doc.isModified && 
-          doc.content !== vditorRef.current?.getValue()) {
+
+      if (
+        doc &&
+        prevDoc &&
+        doc.content !== prevDoc.content &&
+        !doc.isModified &&
+        doc.content !== vditorRef.current?.getValue()
+      ) {
         vditorRef.current?.setValue(doc.content);
         contentRef.current = doc.content;
       }
     });
-    
+
     return unsubscribe;
   }, [path]);
 
   // 当 path 变化时初始化编辑器
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const documents = useEditorStore.getState().documents;
     const doc = documents[path];
     if (!doc) {
       return;
     }
-    
+
     if (isInitializedRef.current && currentPathRef.current === path) {
       return;
     }
@@ -568,7 +606,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
     const savedEditorMode = currentDocState?.editorMode ?? 'ir';
     const savedScrollPosition = currentDocState?.scrollPosition ?? 0;
     const savedPreviewMode = currentDocState?.previewMode ?? 'editor';
-    
+
     const vditor = new Vditor(containerRef.current, {
       mode: savedEditorMode,
       height: '100%',
@@ -595,37 +633,98 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         parse: false,
         emoji: {
           // 常用表情
-          'smile': '😊', 'laugh': '😄', 'wink': '😉', 'love': '😍',
-          'cool': '😎', 'think': '🤔', 'sad': '😢', 'cry': '😭',
-          'angry': '😠', 'surprised': '😮', 'sleepy': '😴', 'sick': '🤒',
+          smile: '😊',
+          laugh: '😄',
+          wink: '😉',
+          love: '😍',
+          cool: '😎',
+          think: '🤔',
+          sad: '😢',
+          cry: '😭',
+          angry: '😠',
+          surprised: '😮',
+          sleepy: '😴',
+          sick: '🤒',
           // 手势
-          'ok': '👌', 'thumbsup': '👍', 'thumbsdown': '👎', 'clap': '👏',
-          'pray': '🙏', 'fist': '✊', 'victory': '✌️', 'muscle': '💪',
+          ok: '👌',
+          thumbsup: '👍',
+          thumbsdown: '👎',
+          clap: '👏',
+          pray: '🙏',
+          fist: '✊',
+          victory: '✌️',
+          muscle: '💪',
           // 爱心
-          'heart': '❤️', 'blue_heart': '💙', 'green_heart': '💚',
-          'yellow_heart': '💛', 'purple_heart': '💜', 'sparkling_heart': '💖',
+          heart: '❤️',
+          blue_heart: '💙',
+          green_heart: '💚',
+          yellow_heart: '💛',
+          purple_heart: '💜',
+          sparkling_heart: '💖',
           // 符号
-          'check': '✅', 'cross': '❌', 'warning': '⚠️', 'star': '⭐',
-          'sparkles': '✨', 'fire': '🔥', 'rocket': '🚀', 'bulb': '💡',
+          check: '✅',
+          cross: '❌',
+          warning: '⚠️',
+          star: '⭐',
+          sparkles: '✨',
+          fire: '🔥',
+          rocket: '🚀',
+          bulb: '💡',
           // 物品
-          'book': '📖', 'pencil': '📝', 'memo': '📋', 'link': '🔗',
-          'lock': '🔒', 'key': '🔑', 'computer': '💻', 'email': '📧',
-          'phone': '📞', 'camera': '📷',
+          book: '📖',
+          pencil: '📝',
+          memo: '📋',
+          link: '🔗',
+          lock: '🔒',
+          key: '🔑',
+          computer: '💻',
+          email: '📧',
+          phone: '📞',
+          camera: '📷',
           // 自然
-          'sunny': '☀️', 'cloud': '☁️', 'rainbow': '🌈', 'flower': '🌸',
-          'tree': '🌳', 'apple': '🍎', 'banana': '🍌', 'watermelon': '🍉',
+          sunny: '☀️',
+          cloud: '☁️',
+          rainbow: '🌈',
+          flower: '🌸',
+          tree: '🌳',
+          apple: '🍎',
+          banana: '🍌',
+          watermelon: '🍉',
           // 动物
-          'dog': '🐕', 'cat': '🐱', 'rabbit': '🐰', 'panda': '🐼',
-          'bird': '🐦', 'fish': '🐟', 'butterfly': '🦋', 'bee': '🐝',
+          dog: '🐕',
+          cat: '🐱',
+          rabbit: '🐰',
+          panda: '🐼',
+          bird: '🐦',
+          fish: '🐟',
+          butterfly: '🦋',
+          bee: '🐝',
           // 食物
-          'coffee': '☕', 'tea': '🍵', 'beer': '🍺', 'cake': '🍰',
-          'pizza': '🍕', 'burger': '🍔', 'ramen': '🍜', 'sushi': '🍣',
+          coffee: '☕',
+          tea: '🍵',
+          beer: '🍺',
+          cake: '🍰',
+          pizza: '🍕',
+          burger: '🍔',
+          ramen: '🍜',
+          sushi: '🍣',
           // 运动
-          'soccer': '⚽', 'basketball': '🏀', 'tennis': '🎾', 'trophy': '🏆',
-          'medal': '🏅', 'gold': '🥇', 'silver': '🥈', 'bronze': '🥉',
+          soccer: '⚽',
+          basketball: '🏀',
+          tennis: '🎾',
+          trophy: '🏆',
+          medal: '🏅',
+          gold: '🥇',
+          silver: '🥈',
+          bronze: '🥉',
           // 庆祝
-          'party': '🎉', 'gift': '🎁', 'crown': '👑', 'bell': '🔔',
-          'balloon': '🎈', 'fireworks': '🎆', 'christmas': '🎄',
+          party: '🎉',
+          gift: '🎁',
+          crown: '👑',
+          bell: '🔔',
+          balloon: '🎈',
+          fireworks: '🎆',
+          christmas: '🎄',
         },
       },
       // 工具栏配置
@@ -741,13 +840,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
         },
         {
           name: 'more',
-          toolbar: [
-            'export',
-            'fullscreen',
-            'devtools',
-            'info',
-            'help',
-          ],
+          toolbar: ['export', 'fullscreen', 'devtools', 'info', 'help'],
         },
       ],
       // 编辑器配置
@@ -763,7 +856,7 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
           const tauriDetected = await waitForTauri();
           const imageDirectory = useSettingsStore.getState().imageDirectory || 'img';
           const { rootHandle } = useFileStore.getState();
-          
+
           let docDir = '';
           if (path.startsWith('file://')) {
             const fullPath = path.replace('file://', '');
@@ -772,52 +865,54 @@ export const VditorEditor = React.memo<VditorEditorProps>(({ path, isInPane }) =
               docDir = fullPath.substring(0, lastSlash);
             }
           }
-          
+
           if (!docDir) {
             alert('无法确定文档目录，请确保已保存文档。');
             return null;
           }
-          
+
           if (tauriDetected) {
             try {
               const pathSep = '\\';
               const imgDirPath = `${docDir}${pathSep}${imageDirectory}`;
-              
+
               const { mkdir, writeFile } = await import('@tauri-apps/plugin-fs');
-              
+
               try {
                 await mkdir(imgDirPath, { recursive: true });
               } catch (e) {
                 // 目录已存在，忽略错误
               }
-              
+
               for (const file of files) {
                 const timestamp = Date.now();
                 const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
                 const fileName = `${timestamp}_${safeName}`;
                 const filePath = `${imgDirPath}${pathSep}${fileName}`;
-                
+
                 const arrayBuffer = await file.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
-                
+
                 await writeFile(filePath, uint8Array);
-                
-const relativePath = `${imageDirectory}/${fileName}`;
+
+                const relativePath = `${imageDirectory}/${fileName}`;
                 const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})\n\n`;
                 const vditor = vditorRef.current;
                 if (vditor) {
                   vditor.insertValue(markdown);
-                  
+
                   setTimeout(() => {
-                    const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+                    const vditorReset = containerRef.current?.querySelector(
+                      '.vditor-ir .vditor-reset',
+                    ) as HTMLElement;
                     if (vditorReset) {
                       vditorReset.focus();
-                      
+
                       const selection = window.getSelection();
                       if (selection && selection.rangeCount > 0) {
                         const range = selection.getRangeAt(0);
                         let cursorRect = range.getBoundingClientRect();
-                        
+
                         if (cursorRect.bottom === 0) {
                           const tempSpan = document.createElement('span');
                           tempSpan.textContent = '\u200B';
@@ -825,35 +920,35 @@ const relativePath = `${imageDirectory}/${fileName}`;
                           cursorRect = tempSpan.getBoundingClientRect();
                           tempSpan.remove();
                         }
-                        
+
                         const containerRect = vditorReset.getBoundingClientRect();
                         const margin = 80;
                         if (cursorRect.bottom > containerRect.bottom - margin) {
-                          vditorReset.scrollTop += (cursorRect.bottom - containerRect.bottom + margin);
+                          vditorReset.scrollTop +=
+                            cursorRect.bottom - containerRect.bottom + margin;
                         }
                       }
                     }
                   }, 100);
                 }
               }
-              
+
               return null;
-              
             } catch (e) {
               alert(`保存图片失败: ${e}`);
               return null;
             }
           }
-          
+
           if (!rootHandle) {
             alert('请先打开文件夹后再粘贴图片。');
             return null;
           }
-          
+
           try {
             const { dirHandles, refreshFileTree } = useFileStore.getState();
             let docDirHandle: FileSystemDirectoryHandle = rootHandle!;
-            
+
             if (path.startsWith('file://')) {
               const fullPath = path.replace('file://', '');
               const lastSlash = fullPath.lastIndexOf('/');
@@ -865,35 +960,37 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 }
               }
             }
-            
+
             const imgDir = await docDirHandle.getDirectoryHandle(imageDirectory, { create: true });
-            
+
             for (const file of files) {
               const timestamp = Date.now();
               const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5.]/g, '_');
               const fileName = `${timestamp}_${safeName}`;
-              
+
               const fileHandle = await imgDir.getFileHandle(fileName, { create: true });
               const writable = await fileHandle.createWritable();
               await writable.write(file);
               await writable.close();
-              
+
               const relativePath = `${imageDirectory}/${fileName}`;
               const markdown = `![${safeName.replace(/\.[^.]+$/, '')}](${relativePath})\n\n`;
               const vditor = vditorRef.current;
               if (vditor) {
                 vditor.insertValue(markdown);
-                
+
                 setTimeout(() => {
-                  const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+                  const vditorReset = containerRef.current?.querySelector(
+                    '.vditor-ir .vditor-reset',
+                  ) as HTMLElement;
                   if (vditorReset) {
                     vditorReset.focus();
-                    
+
                     const selection = window.getSelection();
                     if (selection && selection.rangeCount > 0) {
                       const range = selection.getRangeAt(0);
                       let cursorRect = range.getBoundingClientRect();
-                      
+
                       if (cursorRect.bottom === 0) {
                         const tempSpan = document.createElement('span');
                         tempSpan.textContent = '\u200B';
@@ -901,21 +998,20 @@ const relativePath = `${imageDirectory}/${fileName}`;
                         cursorRect = tempSpan.getBoundingClientRect();
                         tempSpan.remove();
                       }
-                      
+
                       const containerRect = vditorReset.getBoundingClientRect();
                       const margin = 80;
                       if (cursorRect.bottom > containerRect.bottom - margin) {
-                        vditorReset.scrollTop += (cursorRect.bottom - containerRect.bottom + margin);
+                        vditorReset.scrollTop += cursorRect.bottom - containerRect.bottom + margin;
                       }
                     }
                   }
                 }, 100);
               }
             }
-            
+
             refreshFileTree();
             return null;
-            
           } catch (e) {
             alert(`保存图片失败: ${e}`);
             return null;
@@ -932,15 +1028,15 @@ const relativePath = `${imageDirectory}/${fileName}`;
       after: () => {
         vditorRef.current = vditor;
         isInitializedRef.current = true;
-        
+
         const vditorInternal = (vditor as any).vditor;
-        
+
         // 设置初始字数统计
         const initialValue = vditor.getValue();
         const store = useEditorStore.getState();
         store.setMarkdownLength(initialValue.length);
         store.setWordCount(countPlainText(initialValue));
-        
+
         // 手动启用上标和下标功能（等待官方发布 3.11.3）
         try {
           const lute = (vditor as any).vditor?.lute;
@@ -954,18 +1050,20 @@ const relativePath = `${imageDirectory}/${fileName}`;
         } catch (e) {
           console.warn('[Lute] 启用上标/下标失败:', e);
         }
-        
+
         // 处理本地图片加载
         processLocalImages(containerRef.current!, path);
-        
+
         // 拦截原版emoji按钮点击，使用自定义表情选择器
-        const emojiBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="emoji"]');
+        const emojiBtn = containerRef.current?.querySelector(
+          '.vditor-toolbar button[data-type="emoji"]',
+        );
         if (emojiBtn) {
           // 隐藏原版emoji面板
           const style = document.createElement('style');
           style.textContent = '.vditor-emojis { display: none !important; }';
           document.head.appendChild(style);
-          
+
           // 拦截点击事件
           const handleEmojiClick = (e: Event) => {
             e.preventDefault();
@@ -976,40 +1074,43 @@ const relativePath = `${imageDirectory}/${fileName}`;
           (vditorRef.current as any)._emojiClickHandler = handleEmojiClick;
           (vditorRef.current as any)._emojiStyleEl = style;
         }
-        
+
         // 拦截indent按钮，处理任务列表全选缩进问题
-        const indentBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="indent"]');
+        const indentBtn = containerRef.current?.querySelector(
+          '.vditor-toolbar button[data-type="indent"]',
+        );
         if (indentBtn) {
           const handleIndentClick = (e: Event) => {
             // 在缩进执行后，检测并修复任务列表
             setTimeout(() => {
               const vditor = vditorRef.current;
               if (!vditor) return;
-              
+
               // 获取当前光标位置
               const selection = window.getSelection();
               if (!selection || selection.rangeCount === 0) return;
-              
+
               const range = selection.getRangeAt(0);
               const container = range.commonAncestorContainer;
-              const li = container.nodeType === Node.TEXT_NODE 
-                ? container.parentElement?.closest('li')
-                : (container as Element).closest('li');
-              
+              const li =
+                container.nodeType === Node.TEXT_NODE
+                  ? container.parentElement?.closest('li')
+                  : (container as Element).closest('li');
+
               if (li) {
                 // 检查这个li是否包含任务列表的文本格式（[ ] 或 [x]）
                 const text = li.textContent || '';
                 const hasTaskFormat = /\[([ xX])\]/.test(text);
-                
+
                 if (hasTaskFormat && !li.querySelector('input[type="checkbox"]')) {
                   // 找到li内最后一个文本节点
                   const walker = document.createTreeWalker(li, NodeFilter.SHOW_TEXT, null);
                   let lastTextNode: Text | null = null;
                   let node;
-                  while (node = walker.nextNode()) {
+                  while ((node = walker.nextNode())) {
                     lastTextNode = node as Text;
                   }
-                  
+
                   if (lastTextNode) {
                     // 将光标移动到行尾
                     const newRange = document.createRange();
@@ -1017,10 +1118,10 @@ const relativePath = `${imageDirectory}/${fileName}`;
                     newRange.setEnd(lastTextNode, lastTextNode.length);
                     selection.removeAllRanges();
                     selection.addRange(newRange);
-                    
+
                     // 在行尾插入空格
                     vditor.insertValue(' ');
-                    
+
                     // 延迟删除空格
                     setTimeout(() => {
                       const sel = window.getSelection();
@@ -1039,7 +1140,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
           indentBtn.addEventListener('click', handleIndentClick, true);
           (vditorRef.current as any)._indentClickHandler = handleIndentClick;
         }
-        
+
         // 恢复预览模式
         const currentVditor = vditor;
         setTimeout(() => {
@@ -1050,7 +1151,9 @@ const relativePath = `${imageDirectory}/${fileName}`;
             if (savedPreviewMode === 'both') {
               vditorRef.current?.setPreviewMode('both');
             } else if (savedPreviewMode === 'preview') {
-              const previewBtn = containerRef.current?.querySelector('.vditor-toolbar button[data-type="preview"]') as HTMLElement;
+              const previewBtn = containerRef.current?.querySelector(
+                '.vditor-toolbar button[data-type="preview"]',
+              ) as HTMLElement;
               if (previewBtn) {
                 previewBtn.click();
               }
@@ -1059,16 +1162,16 @@ const relativePath = `${imageDirectory}/${fileName}`;
             // ignore
           }
         }, 300);
-        
+
         if (savedScrollPosition > 0) {
           setTimeout(() => {
             // 尝试多种选择器找到滚动容器
             let vditorResetEl: HTMLElement | null = null;
             const selectors = [
               '.vditor-ir .vditor-reset',
-              '.vditor-sv .vditor-reset', 
+              '.vditor-sv .vditor-reset',
               '.vditor-wysiwyg .vditor-reset',
-              '.vditor-reset'
+              '.vditor-reset',
             ];
             for (const selector of selectors) {
               const el = containerRef.current?.querySelector(selector) as HTMLElement;
@@ -1082,7 +1185,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
             }
           }, 200);
         }
-        
+
         // 监听滚动位置变化
         let scrollPositionTimeout: ReturnType<typeof setTimeout>;
         const handleScrollPosition = () => {
@@ -1094,7 +1197,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
               '.vditor-ir .vditor-reset',
               '.vditor-sv .vditor-reset',
               '.vditor-wysiwyg .vditor-reset',
-              '.vditor-reset'
+              '.vditor-reset',
             ];
             for (const selector of selectors) {
               const el = containerRef.current?.querySelector(selector) as HTMLElement;
@@ -1108,46 +1211,52 @@ const relativePath = `${imageDirectory}/${fileName}`;
             }
           }, 200);
         };
-        
+
         // 给所有可能的滚动容器添加监听
         const resetElements = containerRef.current?.querySelectorAll('.vditor-reset');
-        resetElements?.forEach(el => {
+        resetElements?.forEach((el) => {
           el.addEventListener('scroll', handleScrollPosition);
         });
         (vditorRef.current as any)._scrollPositionHandler = handleScrollPosition;
-        
+
         // 监听大纲显示/隐藏
-        const outlineElement = containerRef.current?.querySelector('.vditor-outline') as HTMLElement;
+        const outlineElement = containerRef.current?.querySelector(
+          '.vditor-outline',
+        ) as HTMLElement;
         if (outlineElement) {
           const outlineObserver = new MutationObserver(() => {
-            const isVisible = outlineElement.style.display !== 'none' && outlineElement.offsetParent !== null;
+            const isVisible =
+              outlineElement.style.display !== 'none' && outlineElement.offsetParent !== null;
             setOutlineVisibleRef.current(pathRef.current, isVisible);
           });
-          outlineObserver.observe(outlineElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          outlineObserver.observe(outlineElement, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          });
           (vditorRef.current as any)._outlineObserver = outlineObserver;
-          
+
           // 大纲增强功能：tooltip + 可调整宽度
           const setupOutlineEnhancements = () => {
             const OUTLINE_WIDTH_KEY = 'md-editor-outline-width';
             const MIN_WIDTH = 180;
-            
+
             const getContentContainer = () => {
               return outlineElement.closest('.vditor-content') as HTMLElement;
             };
-            
+
             const getMaxWidth = () => {
               const content = getContentContainer();
               if (!content) return 400;
               return Math.floor(content.offsetWidth * 0.5);
             };
-            
+
             const applyWidth = (width: number) => {
               const maxWidth = getMaxWidth();
               const finalWidth = Math.max(MIN_WIDTH, Math.min(maxWidth, width));
               outlineElement.style.width = `${finalWidth}px`;
               outlineElement.style.flexBasis = `${finalWidth}px`;
             };
-            
+
             const savedWidth = localStorage.getItem(OUTLINE_WIDTH_KEY);
             if (savedWidth) {
               const width = parseInt(savedWidth, 10);
@@ -1155,9 +1264,11 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 applyWidth(width);
               }
             }
-            
+
             const handleOutlineMouseOver = (e: MouseEvent) => {
-              const target = (e.target as HTMLElement).closest('li > span > span') as HTMLElement | null;
+              const target = (e.target as HTMLElement).closest(
+                'li > span > span',
+              ) as HTMLElement | null;
               if (target && target.textContent) {
                 target.setAttribute('title', target.textContent);
               }
@@ -1165,18 +1276,18 @@ const relativePath = `${imageDirectory}/${fileName}`;
             outlineElement.addEventListener('mouseover', handleOutlineMouseOver);
             (vditorRef.current as any)._outlineMouseOverHandler = handleOutlineMouseOver;
             (vditorRef.current as any)._outlineMouseOverTarget = outlineElement;
-            
+
             let isDragging = false;
             let startX = 0;
             let startWidth = 0;
-            
+
             const handleMouseDown = (e: MouseEvent) => {
               if (e.button !== 0) return;
               const rect = outlineElement.getBoundingClientRect();
               const edgeWidth = 6;
               if (e.clientX < rect.left || e.clientX > rect.left + edgeWidth) return;
               if (e.clientY < rect.top || e.clientY > rect.bottom) return;
-              
+
               isDragging = true;
               startX = e.clientX;
               startWidth = outlineElement.offsetWidth;
@@ -1185,7 +1296,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
               outlineElement.classList.add('outline-resizing');
               e.preventDefault();
             };
-            
+
             const handleMouseMove = (e: MouseEvent) => {
               if (isDragging) {
                 const diff = startX - e.clientX;
@@ -1194,15 +1305,19 @@ const relativePath = `${imageDirectory}/${fileName}`;
               } else {
                 const rect = outlineElement.getBoundingClientRect();
                 const edgeWidth = 6;
-                if (e.clientX >= rect.left && e.clientX <= rect.left + edgeWidth &&
-                    e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                if (
+                  e.clientX >= rect.left &&
+                  e.clientX <= rect.left + edgeWidth &&
+                  e.clientY >= rect.top &&
+                  e.clientY <= rect.bottom
+                ) {
                   outlineElement.style.cursor = 'col-resize';
                 } else {
                   outlineElement.style.cursor = '';
                 }
               }
             };
-            
+
             const handleMouseUp = () => {
               if (!isDragging) return;
               isDragging = false;
@@ -1212,25 +1327,27 @@ const relativePath = `${imageDirectory}/${fileName}`;
               const currentWidth = outlineElement.offsetWidth;
               localStorage.setItem(OUTLINE_WIDTH_KEY, currentWidth.toString());
             };
-            
+
             document.addEventListener('mousedown', handleMouseDown);
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
-            
+
             (vditorRef.current as any)._outlineResizeMouseDown = handleMouseDown;
             (vditorRef.current as any)._outlineResizeMouseMove = handleMouseMove;
             (vditorRef.current as any)._outlineResizeMouseUp = handleMouseUp;
           };
-          
+
           setupOutlineEnhancements();
         }
-        
+
         // 监听编辑模式切换 - 监听三个编辑区域的display变化
         const checkEditorMode = () => {
           const irElement = containerRef.current?.querySelector('.vditor-ir') as HTMLElement | null;
           const svElement = containerRef.current?.querySelector('.vditor-sv') as HTMLElement | null;
-          const wysiwygElement = containerRef.current?.querySelector('.vditor-wysiwyg') as HTMLElement | null;
-          
+          const wysiwygElement = containerRef.current?.querySelector(
+            '.vditor-wysiwyg',
+          ) as HTMLElement | null;
+
           let currentMode: EditorMode = 'ir';
           if (svElement && svElement.style.display !== 'none') {
             currentMode = 'sv';
@@ -1239,50 +1356,77 @@ const relativePath = `${imageDirectory}/${fileName}`;
           } else if (irElement && irElement.style.display !== 'none') {
             currentMode = 'ir';
           }
-          
+
           setEditorModeRef.current(pathRef.current, currentMode);
         };
-        
+
         // 监听三个编辑区域的style变化
         const irElement = containerRef.current?.querySelector('.vditor-ir');
         const svElement = containerRef.current?.querySelector('.vditor-sv');
         const wysiwygElement = containerRef.current?.querySelector('.vditor-wysiwyg');
-        
+
         const modeObserver = new MutationObserver(() => {
           checkEditorMode();
         });
-        
+
         if (irElement) {
-          modeObserver.observe(irElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          modeObserver.observe(irElement, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          });
         }
         if (svElement) {
-          modeObserver.observe(svElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          modeObserver.observe(svElement, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          });
         }
         if (wysiwygElement) {
-          modeObserver.observe(wysiwygElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          modeObserver.observe(wysiwygElement, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          });
         }
         (vditorRef.current as any)._modeObserver = modeObserver;
-        
+
         // 监听预览模式变化
-        const previewElement = containerRef.current?.querySelector('.vditor-preview') as HTMLElement;
-        const irElementForPreview = containerRef.current?.querySelector('.vditor-ir') as HTMLElement;
-        const svElementForPreview = containerRef.current?.querySelector('.vditor-sv') as HTMLElement;
-        const wysiwygElementForPreview = containerRef.current?.querySelector('.vditor-wysiwyg') as HTMLElement;
-        
+        const previewElement = containerRef.current?.querySelector(
+          '.vditor-preview',
+        ) as HTMLElement;
+        const irElementForPreview = containerRef.current?.querySelector(
+          '.vditor-ir',
+        ) as HTMLElement;
+        const svElementForPreview = containerRef.current?.querySelector(
+          '.vditor-sv',
+        ) as HTMLElement;
+        const wysiwygElementForPreview = containerRef.current?.querySelector(
+          '.vditor-wysiwyg',
+        ) as HTMLElement;
+
         if (previewElement) {
           const previewObserver = new MutationObserver(() => {
             const vditorInternal = (vditorRef.current as any)?.vditor;
             const internalPreviewMode = vditorInternal?.currentPreviewMode;
-            
+
             // 检测预览区域和编辑器区域的显示状态
-            const previewVisible = previewElement.style.display !== 'none' && previewElement.offsetParent !== null;
-            
+            const previewVisible =
+              previewElement.style.display !== 'none' && previewElement.offsetParent !== null;
+
             // 检查编辑器区域是否可见
-            const irVisible = irElementForPreview ? (irElementForPreview.style.display !== 'none' && irElementForPreview.offsetParent !== null) : false;
-            const svVisible = svElementForPreview ? (svElementForPreview.style.display !== 'none' && svElementForPreview.offsetParent !== null) : false;
-            const wysiwygVisible = wysiwygElementForPreview ? (wysiwygElementForPreview.style.display !== 'none' && wysiwygElementForPreview.offsetParent !== null) : false;
+            const irVisible = irElementForPreview
+              ? irElementForPreview.style.display !== 'none' &&
+                irElementForPreview.offsetParent !== null
+              : false;
+            const svVisible = svElementForPreview
+              ? svElementForPreview.style.display !== 'none' &&
+                svElementForPreview.offsetParent !== null
+              : false;
+            const wysiwygVisible = wysiwygElementForPreview
+              ? wysiwygElementForPreview.style.display !== 'none' &&
+                wysiwygElementForPreview.offsetParent !== null
+              : false;
             const editorVisible = irVisible || svVisible || wysiwygVisible;
-            
+
             // 根据显示状态判断模式
             let currentPreviewMode: PreviewMode = 'editor';
             if (previewVisible && editorVisible) {
@@ -1290,30 +1434,42 @@ const relativePath = `${imageDirectory}/${fileName}`;
             } else if (previewVisible && !editorVisible) {
               currentPreviewMode = 'preview';
             }
-            
+
             setPreviewModeRef.current(pathRef.current, currentPreviewMode);
           });
-          previewObserver.observe(previewElement, { attributes: true, attributeFilter: ['style', 'class'] });
+          previewObserver.observe(previewElement, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          });
           if (irElementForPreview) {
-            previewObserver.observe(irElementForPreview, { attributes: true, attributeFilter: ['style', 'class'] });
+            previewObserver.observe(irElementForPreview, {
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
           }
           if (svElementForPreview) {
-            previewObserver.observe(svElementForPreview, { attributes: true, attributeFilter: ['style', 'class'] });
+            previewObserver.observe(svElementForPreview, {
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
           }
           if (wysiwygElementForPreview) {
-            previewObserver.observe(wysiwygElementForPreview, { attributes: true, attributeFilter: ['style', 'class'] });
+            previewObserver.observe(wysiwygElementForPreview, {
+              attributes: true,
+              attributeFilter: ['style', 'class'],
+            });
           }
           (vditorRef.current as any)._previewModeObserver = previewObserver;
         }
-        
+
         // 链接点击拦截处理 - 绑定到vditor-reset元素
         const handleLinkClick = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
-          
-          let link = target.closest('a');
+
+          const link = target.closest('a');
           let href: string | null = null;
           let linkText: string | null = null;
-          
+
           if (link) {
             href = link.getAttribute('href');
             linkText = link.textContent;
@@ -1321,10 +1477,10 @@ const relativePath = `${imageDirectory}/${fileName}`;
             const irLink = target.closest('.vditor-ir__link');
             if (irLink) {
               linkText = irLink.textContent;
-              
+
               let parent = irLink.parentElement;
               let found = false;
-              
+
               for (let i = 0; i < 5 && parent && !found; i++) {
                 const urlElement = parent.querySelector('.vditor-ir__url') as HTMLElement;
                 if (urlElement) {
@@ -1332,7 +1488,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
                   found = true;
                   break;
                 }
-                
+
                 const bracketElement = parent.querySelector('.vditor-ir__bracket');
                 if (bracketElement) {
                   const nextSibling = bracketElement.nextElementSibling;
@@ -1342,13 +1498,16 @@ const relativePath = `${imageDirectory}/${fileName}`;
                     break;
                   }
                 }
-                
+
                 parent = parent.parentElement;
               }
-              
+
               if (!href && linkText) {
                 const content = vditor.getValue();
-                const linkRegex = new RegExp(`\\[${linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\(([^)]+)\\)`, 'g');
+                const linkRegex = new RegExp(
+                  `\\[${linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]\\(([^)]+)\\)`,
+                  'g',
+                );
                 const matches = [...content.matchAll(linkRegex)];
                 if (matches.length > 0) {
                   href = matches[0][1];
@@ -1356,29 +1515,33 @@ const relativePath = `${imageDirectory}/${fileName}`;
               }
             }
           }
-          
+
           if (!href) {
             return;
           }
-          
+
           href = href.replace(/[()]/g, '').trim();
-          
-          if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+
+          if (
+            href.startsWith('http://') ||
+            href.startsWith('https://') ||
+            href.startsWith('mailto:')
+          ) {
             return;
           }
-          
+
           if (href.startsWith('#')) {
             return;
           }
-          
+
           if (!isLocalMdFile(href)) {
             return;
           }
-          
+
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
-          
+
           const embedContainer = target.closest('.embed-container');
           if (embedContainer) {
             const embedPath = embedContainer.getAttribute('data-embed-path');
@@ -1387,45 +1550,55 @@ const relativePath = `${imageDirectory}/${fileName}`;
               return;
             }
           }
-          
+
           handleLocalMdLinkClick(href);
         };
-        
+
         const vditorResetForLink = containerRef.current?.querySelector('.vditor-ir .vditor-reset');
         const vditorPreviewEl = containerRef.current?.querySelector('.vditor-preview');
-        
+
         if (vditorResetForLink) {
-          vditorResetForLink.addEventListener('click', handleLinkClick as unknown as EventListener, true);
+          vditorResetForLink.addEventListener(
+            'click',
+            handleLinkClick as unknown as EventListener,
+            true,
+          );
         }
         if (vditorPreviewEl) {
-          vditorPreviewEl.addEventListener('click', handleLinkClick as unknown as EventListener, true);
+          vditorPreviewEl.addEventListener(
+            'click',
+            handleLinkClick as unknown as EventListener,
+            true,
+          );
         }
-        
+
         (vditorRef.current as any)._linkClickHandler = handleLinkClick;
         (vditorRef.current as any)._linkClickReset = vditorResetForLink;
         (vditorRef.current as any)._linkClickPreview = vditorPreviewEl;
-        
+
         // 处理预览模式的嵌入内容
         const currentPath = path;
         const maxEmbedCount = embedMaxCount;
         const currentRootPath = getRootPath();
         let isProcessing = false;
         let processedInCurrentBatch = 0; // 当前批次已处理的数量
-        
+
         const processEmbedPlaceholders = async () => {
           if (isProcessing) return;
           isProcessing = true;
           processedInCurrentBatch = 0;
-          
+
           try {
-            const previewElements = containerRef.current?.querySelectorAll('.vditor-preview, .vditor-sv__preview, .vditor-ir__preview');
+            const previewElements = containerRef.current?.querySelectorAll(
+              '.vditor-preview, .vditor-sv__preview, .vditor-ir__preview',
+            );
             if (!previewElements || previewElements.length === 0) {
               return;
             }
-            
+
             const mdContent = vditor.getValue();
             const mdEmbedLinks: Array<{ url: string; displayText: string }> = [];
-            
+
             // 使用新语法的正则：[[xxx]](doc.md) 或 [[](doc.md)
             const linkRegex = /\[\[([^\]]*?)\]\]\(([^)]+)\)/gi;
             let match;
@@ -1436,22 +1609,25 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 mdEmbedLinks.push({ url, displayText });
               }
             }
-            
+
             // 更新已存在的嵌入容器的标题
             for (const previewEl of previewElements) {
               if ((previewEl as HTMLElement).style.display === 'none') continue;
-              
+
               const embedContainers = previewEl.querySelectorAll('.embed-container');
-              
+
               for (const container of embedContainers) {
                 const embedPath = container.getAttribute('data-embed-path');
                 if (!embedPath) continue;
-                
-                const linkInfo = mdEmbedLinks.find(l => {
-                  const resolved = resolveDocPath(l.url, currentPath, currentRootPath).replace(/\\/g, '/');
+
+                const linkInfo = mdEmbedLinks.find((l) => {
+                  const resolved = resolveDocPath(l.url, currentPath, currentRootPath).replace(
+                    /\\/g,
+                    '/',
+                  );
                   return resolved === embedPath.replace(/\\/g, '/') || l.url === embedPath;
                 });
-                
+
                 if (linkInfo) {
                   const titleEl = container.querySelector('.embed-title');
                   if (titleEl) {
@@ -1463,73 +1639,80 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 }
               }
             }
-            
+
             // 收集所有待处理的链接，并立即标记
-            const pendingLinks: Array<{ link: HTMLAnchorElement; linkInfo: { url: string; displayText: string } }> = [];
-            
+            const pendingLinks: Array<{
+              link: HTMLAnchorElement;
+              linkInfo: { url: string; displayText: string };
+            }> = [];
+
             for (const previewEl of previewElements) {
               if ((previewEl as HTMLElement).style.display === 'none') continue;
-              
+
               const allLinks = Array.from(previewEl.querySelectorAll('a'));
-              
+
               for (const link of allLinks) {
                 if (!link.parentElement) continue;
                 if ((link as any)._embedProcessed) continue;
-                
+
                 const href = link.getAttribute('href') || '';
                 const linkText = link.textContent?.trim() || '';
-                
+
                 // 检查链接文本是否是 [xxx] 格式（嵌入语法）
                 if (!linkText.startsWith('[') || !linkText.endsWith(']')) continue;
-                
-                const linkInfo = mdEmbedLinks.find(l => l.url === href);
+
+                const linkInfo = mdEmbedLinks.find((l) => l.url === href);
                 if (!linkInfo) continue;
-                
+
                 // 立即标记为已处理
                 (link as any)._embedProcessed = true;
                 pendingLinks.push({ link, linkInfo });
               }
             }
-            
+
             // 同步顺序处理每个链接
             for (const { link, linkInfo } of pendingLinks) {
               if (!link.parentElement) continue;
-              
+
               // 检查数量限制
               if (processedInCurrentBatch >= maxEmbedCount) {
-                link.outerHTML = createEmbedWarning(`嵌入文档数量超过限制 (最大${maxEmbedCount}个)`);
+                link.outerHTML = createEmbedWarning(
+                  `嵌入文档数量超过限制 (最大${maxEmbedCount}个)`,
+                );
                 continue;
               }
-              
+
               const href = link.getAttribute('href') || '';
               const resolvedPath = resolveDocPath(href, currentPath, currentRootPath);
               const normalizedResolvedPath = resolvedPath.replace(/\\/g, '/');
               const currentDocFullPath = currentPath.replace(/^file:\/\//, '').replace(/\\/g, '/');
-              
-              if (normalizedResolvedPath === currentDocFullPath || 
-                  currentDocFullPath.endsWith('/' + normalizedResolvedPath)) {
+
+              if (
+                normalizedResolvedPath === currentDocFullPath ||
+                currentDocFullPath.endsWith('/' + normalizedResolvedPath)
+              ) {
                 link.outerHTML = createEmbedWarning(`检测到循环引用: 不能嵌入自身`, resolvedPath);
                 continue;
               }
-              
+
               // 立即增加计数
               processedInCurrentBatch++;
-              
+
               const result = await readMdFileContent(resolvedPath);
-              
+
               if (!link.parentElement) {
                 continue;
               }
-              
+
               if (result.error) {
                 link.outerHTML = createEmbedWarning(result.error, resolvedPath);
               } else {
                 const tempDiv = document.createElement('div');
                 tempDiv.className = 'embed-content vditor-reset';
-                
+
                 await new Promise<void>((resolve) => {
                   Vditor.preview(tempDiv, result.content || '', {
-      cdn: VDITOR_CDN,
+                    cdn: VDITOR_CDN,
                     mode: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
                     markdown: {
                       codeBlockPreview: true,
@@ -1541,12 +1724,16 @@ const relativePath = `${imageDirectory}/${fileName}`;
                   });
                   setTimeout(resolve, 500);
                 });
-                
+
                 if (!link.parentElement) {
                   continue;
                 }
-                
-                const embedHtml = createEmbedContainer(resolvedPath, tempDiv.innerHTML, linkInfo.displayText);
+
+                const embedHtml = createEmbedContainer(
+                  resolvedPath,
+                  tempDiv.innerHTML,
+                  linkInfo.displayText,
+                );
                 link.outerHTML = embedHtml;
               }
             }
@@ -1554,15 +1741,15 @@ const relativePath = `${imageDirectory}/${fileName}`;
             isProcessing = false;
           }
         };
-        
+
         setTimeout(() => {
           processEmbedPlaceholders();
         }, 300);
-        
+
         const previewObserver = new MutationObserver(() => {
           processEmbedPlaceholders();
         });
-        
+
         if (containerRef.current) {
           previewObserver.observe(containerRef.current, {
             childList: true,
@@ -1570,23 +1757,23 @@ const relativePath = `${imageDirectory}/${fileName}`;
           });
         }
         (vditorRef.current as any)._previewObserver = previewObserver;
-        
+
         // TOC 目录点击跳转处理（使用事件委托，绑定到容器）
         const handleTocClick = (e: MouseEvent) => {
           const target = e.target as HTMLElement;
-          
+
           const tocContainer = target.closest('.vditor-toc');
           if (!tocContainer) return;
-          
+
           const tocItem = target.closest('li');
           if (!tocItem) return;
-          
+
           const link = tocItem.querySelector('a, span[data-target-id]') as HTMLElement;
           if (!link) return;
-          
+
           e.preventDefault();
           e.stopPropagation();
-          
+
           let headingId: string | null = null;
           if (link.tagName === 'A') {
             const href = link.getAttribute('href');
@@ -1596,16 +1783,18 @@ const relativePath = `${imageDirectory}/${fileName}`;
           } else {
             headingId = link.getAttribute('data-target-id');
           }
-          
+
           if (headingId) {
-            const vditorReset = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+            const vditorReset = containerRef.current?.querySelector(
+              '.vditor-ir .vditor-reset',
+            ) as HTMLElement;
             if (!vditorReset) return;
-            
+
             // 去掉 ir- 前缀
             const cleanHeadingId = headingId.replace(/^ir-/, '');
-            
+
             let heading = vditorReset.querySelector(`[id="${headingId}"]`) as HTMLElement;
-            
+
             if (!heading) {
               // 尝试查找匹配的标题
               const headings = vditorReset.querySelectorAll('h1, h2, h3, h4, h5, h6');
@@ -1617,41 +1806,47 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 }
               }
             }
-            
+
             if (heading) {
               // 大文档使用即时滚动，小文档使用平滑滚动
               const isLargeDoc = vditorReset.scrollHeight > 50000;
               vditorReset.scrollTo({
                 top: heading.offsetTop - 20,
-                behavior: isLargeDoc ? 'instant' : 'smooth'
+                behavior: isLargeDoc ? 'instant' : 'smooth',
               });
             }
           }
         };
-        
+
         // 绑定到整个编辑器容器（捕获阶段）
         if (containerRef.current) {
           containerRef.current.addEventListener('click', handleTocClick as EventListener, true);
           (vditorRef.current as any)._tocClickHandler = handleTocClick;
           (vditorRef.current as any)._tocClickTarget = containerRef.current;
         }
-        
+
         // 渲染 Mermaid 图表
         const renderMermaid = () => {
-          const mermaidElements = containerRef.current?.querySelectorAll('.vditor-ir pre.vditor-reset .mermaid');
+          const mermaidElements = containerRef.current?.querySelectorAll(
+            '.vditor-ir pre.vditor-reset .mermaid',
+          );
           if (mermaidElements && mermaidElements.length > 0) {
             try {
-              const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'classic';
+              const theme = document.documentElement.classList.contains('dark')
+                ? 'dark'
+                : 'classic';
               Vditor.mermaidRender(containerRef.current!, VDITOR_CDN, theme);
             } catch (e) {
               console.warn('[Mermaid] 渲染失败:', e);
             }
           }
         };
-        
+
         // 渲染 PlantUML 图表
         const renderPlantUML = () => {
-          const plantumlElements = containerRef.current?.querySelectorAll('.vditor-ir pre.vditor-reset .language-plantuml');
+          const plantumlElements = containerRef.current?.querySelectorAll(
+            '.vditor-ir pre.vditor-reset .language-plantuml',
+          );
           if (plantumlElements && plantumlElements.length > 0) {
             try {
               Vditor.plantumlRender(containerRef.current!, VDITOR_CDN);
@@ -1660,24 +1855,24 @@ const relativePath = `${imageDirectory}/${fileName}`;
             }
           }
         };
-        
+
         // 初始渲染
         setTimeout(renderMermaid, 100);
         setTimeout(renderPlantUML, 100);
-        
+
         // 检测光标是否在行首
         const isAtLineStart = (): boolean => {
           const selection = window.getSelection();
           if (!selection || selection.rangeCount === 0) return false;
-          
+
           const range = selection.getRangeAt(0);
           const container = range.startContainer;
-          
+
           // 如果是文本节点，检查偏移量
           if (container.nodeType === Node.TEXT_NODE) {
             const text = container.textContent || '';
             const offset = range.startOffset;
-            
+
             // 检查光标前的文本是否全是空白或为空
             const textBeforeCursor = text.substring(0, offset);
             if (offset === 0 || /^\s*$/.test(textBeforeCursor)) {
@@ -1687,7 +1882,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 // 获取光标所在行的文本
                 const lineText = parent.textContent || '';
                 const cursorPosInLine = offset + (parent.firstChild === container ? 0 : 0);
-                
+
                 // 如果光标前的内容都是空白，则认为在行首
                 const beforeCursor = lineText.substring(0, cursorPosInLine);
                 if (/^\s*$/.test(beforeCursor) || cursorPosInLine === 0) {
@@ -1696,41 +1891,41 @@ const relativePath = `${imageDirectory}/${fileName}`;
               }
             }
           }
-          
+
           return false;
         };
-        
+
         // 记录 Tab 按下时间，用于检测 Tab 触发的代码块
         let lastTabTime = 0;
         let isTabPressed = false;
-        
+
         // 在编辑器容器上拦截 Tab 键
         const tabKeydownHandler = (e: KeyboardEvent) => {
           if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
             const selection = window.getSelection();
             if (selection && selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
-              
+
               // 检查是否在表格内
               const cell = range.startContainer.parentElement?.closest('td, th');
               if (cell) {
                 return;
               }
-              
+
               // 检查是否在列表内 - 匹配 UL/OL/LI 标签
               const listContainer = range.startContainer.parentElement?.closest('ul, ol, li');
               if (listContainer) {
                 return;
               }
             }
-            
+
             // 不在表格或列表内，插入缩进
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
             isTabPressed = true;
             lastTabTime = Date.now();
-            
+
             if (selection && selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
               const textNode = document.createTextNode('　　');
@@ -1739,16 +1934,18 @@ const relativePath = `${imageDirectory}/${fileName}`;
               range.collapse(true);
               selection.removeAllRanges();
               selection.addRange(range);
-              
+
               // 触发 input 事件让 Vditor 知道内容变化了
-              containerRef.current?.querySelector('.vditor-reset')?.dispatchEvent(new InputEvent('input', { bubbles: true }));
+              containerRef.current
+                ?.querySelector('.vditor-reset')
+                ?.dispatchEvent(new InputEvent('input', { bubbles: true }));
             }
           }
         };
-        
+
         containerRef.current?.addEventListener('keydown', tabKeydownHandler, true);
         (vditorRef.current as any)._tabKeydownHandler = tabKeydownHandler;
-        
+
         // Mermaid 渲染防抖
         let mermaidDebounceTimer: number | null = null;
         const debouncedRenderMermaid = () => {
@@ -1756,10 +1953,14 @@ const relativePath = `${imageDirectory}/${fileName}`;
             clearTimeout(mermaidDebounceTimer);
           }
           mermaidDebounceTimer = window.setTimeout(() => {
-            const mermaidElements = containerRef.current?.querySelectorAll('.vditor-ir .vditor-reset .mermaid');
+            const mermaidElements = containerRef.current?.querySelectorAll(
+              '.vditor-ir .vditor-reset .mermaid',
+            );
             if (mermaidElements && mermaidElements.length > 0) {
               try {
-                const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'classic';
+                const theme = document.documentElement.classList.contains('dark')
+                  ? 'dark'
+                  : 'classic';
                 Vditor.mermaidRender(containerRef.current!, VDITOR_CDN, theme);
               } catch (e) {
                 console.warn('[Mermaid] 渲染失败:', e);
@@ -1767,7 +1968,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
             }
           }, 300);
         };
-        
+
         // PlantUML 渲染防抖
         let plantumlDebounceTimer: number | null = null;
         const debouncedRenderPlantUML = () => {
@@ -1775,7 +1976,9 @@ const relativePath = `${imageDirectory}/${fileName}`;
             clearTimeout(plantumlDebounceTimer);
           }
           plantumlDebounceTimer = window.setTimeout(() => {
-            const plantumlElements = containerRef.current?.querySelectorAll('.vditor-ir .vditor-reset .language-plantuml');
+            const plantumlElements = containerRef.current?.querySelectorAll(
+              '.vditor-ir .vditor-reset .language-plantuml',
+            );
             if (plantumlElements && plantumlElements.length > 0) {
               try {
                 Vditor.plantumlRender(containerRef.current!, VDITOR_CDN);
@@ -1785,7 +1988,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
             }
           }, 300);
         };
-        
+
         // MutationObserver 回调处理函数
         const handleMutationCallback = (mutations: MutationRecord[]) => {
           for (const mutation of mutations) {
@@ -1795,59 +1998,64 @@ const relativePath = `${imageDirectory}/${fileName}`;
                 handleLocalImage(node, path);
               } else if (node instanceof HTMLElement) {
                 const imgs = node.querySelectorAll('img');
-                imgs.forEach(img => handleLocalImage(img, path));
-                
+                imgs.forEach((img) => handleLocalImage(img, path));
+
                 // 检测 Mermaid 代码块
-                if (node.classList?.contains('mermaid') || 
-                    node.querySelector?.('.mermaid')) {
+                if (node.classList?.contains('mermaid') || node.querySelector?.('.mermaid')) {
                   debouncedRenderMermaid();
                 }
-                
+
                 // 检测 PlantUML 代码块
-                if (node.classList?.contains('language-plantuml') || 
-                    node.querySelector?.('.language-plantuml')) {
+                if (
+                  node.classList?.contains('language-plantuml') ||
+                  node.querySelector?.('.language-plantuml')
+                ) {
                   debouncedRenderPlantUML();
                 }
-                
+
                 // 检测是否是 Tab 触发的代码块
-                if (node.getAttribute?.('data-type') === 'code-block' || 
-                    node.querySelector?.('[data-type="code-block"]')) {
+                if (
+                  node.getAttribute?.('data-type') === 'code-block' ||
+                  node.querySelector?.('[data-type="code-block"]')
+                ) {
                   const now = Date.now();
                   // 如果在 Tab 按下后 100ms 内插入的代码块，认为是 Tab 触发的
-                    if (now - lastTabTime < 100) {
-                      node.remove();
-                      vditorRef.current?.insertValue('　　');
-                    }
+                  if (now - lastTabTime < 100) {
+                    node.remove();
+                    vditorRef.current?.insertValue('　　');
+                  }
                 }
               }
             }
           }
         };
-        
+
         // 监听DOM变化，处理新插入的图片和代码块
         const imageObserver = new MutationObserver(handleMutationCallback);
-        
+
         imageObserver.observe(containerRef.current!, {
           childList: true,
           subtree: true,
         });
-        
+
         // 自动滚动逻辑 - 类似 VS Code
         // 关键：滚动元素是 .vditor-reset，不是 .vditor-content
-        const vditorResetForScroll = containerRef.current?.querySelector('.vditor-ir .vditor-reset') as HTMLElement;
+        const vditorResetForScroll = containerRef.current?.querySelector(
+          '.vditor-ir .vditor-reset',
+        ) as HTMLElement;
         const contentEl = containerRef.current?.querySelector('.vditor-content') as HTMLElement;
-        
+
         let isUserInput = false;
-        
+
         const handleScroll = () => {
           if (!vditorResetForScroll || !contentEl || !isUserInput) return;
-          
+
           const selection = window.getSelection();
           if (!selection || selection.rangeCount === 0) return;
-          
+
           const range = selection.getRangeAt(0);
           let cursorRect = range.getBoundingClientRect();
-          
+
           if (cursorRect.bottom === 0 && range.collapsed) {
             const tempSpan = document.createElement('span');
             tempSpan.textContent = '\u200B';
@@ -1855,22 +2063,22 @@ const relativePath = `${imageDirectory}/${fileName}`;
             cursorRect = tempSpan.getBoundingClientRect();
             tempSpan.remove();
           }
-          
+
           if (cursorRect.bottom === 0) return;
-          
+
           const containerRect = contentEl.getBoundingClientRect();
           const currentDistanceFromBottom = containerRect.bottom - cursorRect.bottom;
-          
+
           const fixedDistanceFromBottom = 120;
-          
+
           if (currentDistanceFromBottom < fixedDistanceFromBottom) {
             const scrollAmount = fixedDistanceFromBottom - currentDistanceFromBottom;
             vditorResetForScroll.scrollTop += scrollAmount;
           }
-          
+
           isUserInput = false;
         };
-        
+
         // 监听键盘事件（用户输入时触发）
         const handleKeyDown = (e: KeyboardEvent) => {
           // 只在用户输入字符时标记
@@ -1879,11 +2087,11 @@ const relativePath = `${imageDirectory}/${fileName}`;
             requestAnimationFrame(() => handleScroll());
           }
         };
-        
+
         if (vditorResetForScroll) {
           vditorResetForScroll.addEventListener('keydown', handleKeyDown as EventListener);
         }
-        
+
         // 保存引用以便清理
         (vditorRef.current as any)._imageObserver = imageObserver;
         (vditorRef.current as any)._handleKeyDown = handleKeyDown;
@@ -1911,7 +2119,7 @@ const relativePath = `${imageDirectory}/${fileName}`;
         const outlineResizeMouseUp = (vditorRef.current as any)._outlineResizeMouseUp;
         const modeObserver = (vditorRef.current as any)._modeObserver;
         const previewModeObserver = (vditorRef.current as any)._previewModeObserver;
-        
+
         if (imageObserver) imageObserver.disconnect();
         if (previewObserver) previewObserver.disconnect();
         if (outlineObserver) outlineObserver.disconnect();
@@ -1929,12 +2137,12 @@ const relativePath = `${imageDirectory}/${fileName}`;
         }
         if (modeObserver) modeObserver.disconnect();
         if (previewModeObserver) previewModeObserver.disconnect();
-        
+
         // 移除滚动监听
         const scrollPositionHandler = (vditorRef.current as any)._scrollPositionHandler;
         if (scrollPositionHandler) {
           const resetEls = containerRef.current?.querySelectorAll('.vditor-reset');
-          resetEls?.forEach(el => {
+          resetEls?.forEach((el) => {
             el.removeEventListener('scroll', scrollPositionHandler);
           });
         }
@@ -1987,7 +2195,10 @@ const relativePath = `${imageDirectory}/${fileName}`;
   }, []);
 
   return (
-    <div className={`vditor-container editor-width-${editorWidth}`} style={{ position: 'relative' }}>
+    <div
+      className={`vditor-container editor-width-${editorWidth}`}
+      style={{ position: 'relative' }}
+    >
       <div ref={containerRef} className="vditor-wrapper" />
       {/* 表情选择器弹窗 */}
       {showEmojiPicker && (

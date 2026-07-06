@@ -100,9 +100,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         <FileText size={16} />
         <span>打开文件...</span>
       </button>
-      
+
       <div className="my-1 border-t border-[var(--editor-border)]" />
-      
+
       {hasDocument && (
         <button
           className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[var(--editor-text)] hover:bg-[var(--sidebar-hover)] transition-colors"

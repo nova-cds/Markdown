@@ -41,9 +41,10 @@ export const TabBar: React.FC = () => {
                 group relative flex items-center h-9 px-3 cursor-pointer rounded-t-lg
                 transition-all duration-[var(--transition-fast)]
                 min-w-[120px] max-w-[180px]
-                ${isActive
-                  ? 'bg-[var(--tab-active-bg)] text-[var(--editor-text)]'
-                  : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-active-bg)] hover:text-[var(--editor-text)]'
+                ${
+                  isActive
+                    ? 'bg-[var(--tab-active-bg)] text-[var(--editor-text)]'
+                    : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-active-bg)] hover:text-[var(--editor-text)]'
                 }
               `}
               onClick={() => setActiveDocument(tabPath)}
@@ -77,9 +78,10 @@ export const TabBar: React.FC = () => {
                 className={`
                   ml-2 p-1 rounded-md flex-shrink-0
                   transition-all duration-[var(--transition-fast)]
-                  ${isActive
-                    ? 'opacity-0 group-hover:opacity-100 hover:bg-[var(--sidebar-hover)]'
-                    : 'opacity-0 group-hover:opacity-100 hover:bg-[var(--sidebar-active)]'
+                  ${
+                    isActive
+                      ? 'opacity-0 group-hover:opacity-100 hover:bg-[var(--sidebar-hover)]'
+                      : 'opacity-0 group-hover:opacity-100 hover:bg-[var(--sidebar-active)]'
                   }
                   text-[var(--editor-text-muted)] hover:text-[var(--editor-text)]
                 `}

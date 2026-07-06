@@ -2,48 +2,48 @@ import { isTauriCached } from './platform';
 
 export function isLocalMdFile(path: string): boolean {
   if (!path) return false;
-  
-  if (path.startsWith('http://') || 
-      path.startsWith('https://') || 
-      path.startsWith('ftp://') ||
-      path.startsWith('mailto:')) {
+
+  if (
+    path.startsWith('http://') ||
+    path.startsWith('https://') ||
+    path.startsWith('ftp://') ||
+    path.startsWith('mailto:')
+  ) {
     return false;
   }
-  
+
   const lowerPath = path.toLowerCase();
   return lowerPath.endsWith('.md') || lowerPath.endsWith('.markdown');
 }
 
 export function isExternalLink(path: string): boolean {
   if (!path) return false;
-  return path.startsWith('http://') || 
-         path.startsWith('https://') || 
-         path.startsWith('ftp://');
+  return path.startsWith('http://') || path.startsWith('https://') || path.startsWith('ftp://');
 }
 
 export function resolveDocPath(
   linkPath: string,
   currentDocPath: string,
-  rootPath?: string
+  rootPath?: string,
 ): string {
   if (!linkPath) return '';
-  
+
   let cleanPath = linkPath.replace(/^file:\/\//, '');
-  
+
   // 如果是绝对路径（以/开头），表示从项目根目录开始
   if (cleanPath.startsWith('/')) {
     const relativePath = cleanPath.substring(1);
-    
+
     // 如果提供了rootPath（Tauri环境的绝对根路径），拼接返回
     if (rootPath) {
       const sep = rootPath.includes('\\') ? '\\' : '/';
       return rootPath + sep + relativePath.replace(/\//g, sep);
     }
-    
+
     // 否则返回相对路径
     return relativePath;
   }
-  
+
   // 获取当前文档所在的目录
   let currentDir = '';
   if (currentDocPath) {
@@ -53,16 +53,16 @@ export function resolveDocPath(
       currentDir = docPath.substring(0, lastSlash);
     }
   }
-  
+
   // 统一使用/作为分隔符
   cleanPath = cleanPath.replace(/\\/g, '/');
   currentDir = currentDir.replace(/\\/g, '/');
-  
+
   // 处理 ./ 和 ../
   if (cleanPath.startsWith('./')) {
     cleanPath = cleanPath.substring(2);
   }
-  
+
   while (cleanPath.startsWith('../')) {
     if (currentDir) {
       const lastSlash = currentDir.lastIndexOf('/');
@@ -74,16 +74,16 @@ export function resolveDocPath(
     }
     cleanPath = cleanPath.substring(3);
   }
-  
+
   if (currentDir) {
     return currentDir + '/' + cleanPath;
   }
-  
+
   return cleanPath;
 }
 
 export async function readMdFileContent(
-  filePath: string
+  filePath: string,
 ): Promise<{ content: string; error?: string }> {
   try {
     if (isTauriCached()) {
@@ -93,16 +93,16 @@ export async function readMdFileContent(
     } else {
       const { useFileStore } = await import('../stores/fileStore');
       const { rootHandle, dirHandles } = useFileStore.getState();
-      
+
       if (!rootHandle) {
         return { content: '', error: '未打开文件夹' };
       }
-      
+
       const normalizedPath = filePath.replace(/\\/g, '/');
-      const pathParts = normalizedPath.split('/').filter(p => p);
-      
+      const pathParts = normalizedPath.split('/').filter((p) => p);
+
       let currentDir = rootHandle;
-      
+
       for (let i = 0; i < pathParts.length - 1; i++) {
         const dirName = pathParts[i];
         try {
@@ -116,12 +116,12 @@ export async function readMdFileContent(
           }
         }
       }
-      
+
       const fileName = pathParts[pathParts.length - 1];
       const fileHandle = await currentDir.getFileHandle(fileName);
       const file = await fileHandle.getFile();
       const content = await file.text();
-      
+
       return { content };
     }
   } catch (err) {

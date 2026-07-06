@@ -24,7 +24,7 @@ import {
   Pin,
   PinOff,
   ExternalLink,
-  Columns
+  Columns,
 } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -57,16 +57,24 @@ interface DeleteState {
 }
 
 export const Sidebar: React.FC = () => {
-  const { fileTree, rootPath, setFileTree, setFileHandle, setDirHandle, rootHandle, dirHandles } = useFileStore();
-  const { openDocument, renameDocument, documents, activeTabPath, ensureDocument } = useEditorStore();
-  const { readDirectoryRecursive, readDirectoryTauri, handleNewFile, handleOpenFile, handleOpenFolder } = useFileOperations();
+  const { fileTree, rootPath, setFileTree, setFileHandle, setDirHandle, rootHandle, dirHandles } =
+    useFileStore();
+  const { openDocument, renameDocument, documents, activeTabPath, ensureDocument } =
+    useEditorStore();
+  const {
+    readDirectoryRecursive,
+    readDirectoryTauri,
+    handleNewFile,
+    handleOpenFile,
+    handleOpenFolder,
+  } = useFileOperations();
   const { recentFiles, addFile, removeFile, clearAll, pinFile, unpinFile } = useRecentFilesStore();
   const getPaneCount = useSplitStore((state) => state.getPaneCount);
   const getCurrentState = useSplitStore((state) => state.getCurrentState);
   const setPaneDocument = useSplitStore((state) => state.setPaneDocument);
   const setActivePane = useSplitStore((state) => state.setActivePane);
   const getDocumentsInPanes = useSplitStore((state) => state.getDocumentsInPanes);
-  
+
   const hasSplitPanes = activeTabPath ? getPaneCount(activeTabPath) > 1 : false;
 
   // 视图切换：'files' | 'recent'
@@ -84,7 +92,7 @@ export const Sidebar: React.FC = () => {
   const refreshTree = useCallback(async () => {
     const fullRoot = getFullRootPath();
     if (!fullRoot) return;
-    
+
     try {
       if (isTauriCached()) {
         const tree = await readDirectoryTauri(fullRoot);
@@ -96,23 +104,33 @@ export const Sidebar: React.FC = () => {
     } catch (err) {
       console.error('[RefreshTree] 刷新失败:', err);
     }
-  }, [getFullRootPath, readDirectoryTauri, readDirectoryRecursive, rootHandle, rootPath, setFileTree]);
+  }, [
+    getFullRootPath,
+    readDirectoryTauri,
+    readDirectoryRecursive,
+    rootHandle,
+    rootPath,
+    setFileTree,
+  ]);
 
   // 将相对路径转换为绝对路径（Tauri 环境）
-  const toAbsolutePath = useCallback((relativePath: string) => {
-    if (isTauriCached()) {
-      // 如果已经是绝对路径（Windows 包含盘符，Unix 以 / 开头），直接返回
-      if (relativePath.includes(':') || relativePath.startsWith('/')) {
-        return relativePath;
+  const toAbsolutePath = useCallback(
+    (relativePath: string) => {
+      if (isTauriCached()) {
+        // 如果已经是绝对路径（Windows 包含盘符，Unix 以 / 开头），直接返回
+        if (relativePath.includes(':') || relativePath.startsWith('/')) {
+          return relativePath;
+        }
+        const fullRoot = getFullRootPath();
+        if (!fullRoot) {
+          return relativePath;
+        }
+        return `${fullRoot}\\${relativePath}`;
       }
-      const fullRoot = getFullRootPath();
-      if (!fullRoot) {
-        return relativePath;
-      }
-      return `${fullRoot}\\${relativePath}`;
-    }
-    return relativePath;
-  }, [getFullRootPath]);
+      return relativePath;
+    },
+    [getFullRootPath],
+  );
 
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -120,7 +138,7 @@ export const Sidebar: React.FC = () => {
     x: 0,
     y: 0,
     node: null,
-    recentFile: null
+    recentFile: null,
   });
   const [renameState, setRenameState] = useState<RenameState | null>(null);
   const [newFileState, setNewFileState] = useState<NewFileState | null>(null);
@@ -142,7 +160,7 @@ export const Sidebar: React.FC = () => {
         }
       });
       return () => {
-        unlisten.then(fn => fn());
+        unlisten.then((fn) => fn());
       };
     } else {
       const handleFocus = () => {
@@ -165,7 +183,7 @@ export const Sidebar: React.FC = () => {
       const parentPath = lastSlash > 0 ? node.path.substring(0, lastSlash) : '';
       setSelectedDir(parentPath || rootPath || '');
     }
-    
+
     if (!node.isDir) {
       const docPath = `file://${node.path}`;
 
@@ -192,17 +210,17 @@ export const Sidebar: React.FC = () => {
 
   const openFileInPane = async (node: TreeNode) => {
     if (!activeTabPath) return;
-    
+
     const splitState = getCurrentState(activeTabPath);
     if (!splitState) return;
-    
+
     const docPath = `file://${node.path}`;
-    
+
     const existingDocs = getDocumentsInPanes(activeTabPath);
     if (existingDocs.includes(docPath)) {
       return;
     }
-    
+
     try {
       let content: string;
       if (isTauriCached()) {
@@ -216,7 +234,7 @@ export const Sidebar: React.FC = () => {
           return;
         }
       }
-      
+
       ensureDocument(docPath, content, false);
       setPaneDocument(activeTabPath, splitState.activePaneId, docPath);
       setActivePane(activeTabPath, splitState.activePaneId);
@@ -228,19 +246,19 @@ export const Sidebar: React.FC = () => {
 
   const toggleDir = async (path: string, node?: TreeNode) => {
     const newExpanded = new Set(expandedDirs);
-    
+
     if (newExpanded.has(path)) {
       newExpanded.delete(path);
       setExpandedDirs(newExpanded);
     } else {
       newExpanded.add(path);
       setExpandedDirs(newExpanded);
-      
+
       // 检查是否需要加载子目录（延迟加载）
       if (node && node.isDir && (!node.children || node.children.length === 0)) {
         try {
           let children: TreeNode[];
-          
+
           if (isTauriCached()) {
             children = await readDirectoryTauri(path);
           } else {
@@ -251,10 +269,14 @@ export const Sidebar: React.FC = () => {
               children = [];
             }
           }
-          
+
           // 更新 fileTree 中对应节点的 children
-          const updateNodeChildren = (nodes: TreeNode[], targetPath: string, newChildren: TreeNode[]): TreeNode[] => {
-            return nodes.map(n => {
+          const updateNodeChildren = (
+            nodes: TreeNode[],
+            targetPath: string,
+            newChildren: TreeNode[],
+          ): TreeNode[] => {
+            return nodes.map((n) => {
               if (n.path === targetPath) {
                 return { ...n, children: newChildren };
               }
@@ -264,7 +286,7 @@ export const Sidebar: React.FC = () => {
               return n;
             });
           };
-          
+
           setFileTree(updateNodeChildren(fileTree, path, children));
         } catch (err) {
           console.error('[toggleDir] 加载子目录失败:', err);
@@ -281,18 +303,21 @@ export const Sidebar: React.FC = () => {
       x: e.clientX,
       y: e.clientY,
       node,
-      recentFile: null
+      recentFile: null,
     });
   };
 
-  const handleRecentFileContextMenu = (e: React.MouseEvent, file: { path: string; name: string }) => {
+  const handleRecentFileContextMenu = (
+    e: React.MouseEvent,
+    file: { path: string; name: string },
+  ) => {
     e.preventDefault();
     setContextMenu({
       visible: true,
       x: e.clientX,
       y: e.clientY,
       node: null,
-      recentFile: file
+      recentFile: file,
     });
   };
 
@@ -306,7 +331,7 @@ export const Sidebar: React.FC = () => {
       setRenameState({
         path: contextMenu.node.path,
         oldName: contextMenu.node.name,
-        isDir: contextMenu.node.isDir
+        isDir: contextMenu.node.isDir,
       });
       closeContextMenu();
     }
@@ -315,7 +340,10 @@ export const Sidebar: React.FC = () => {
   // 开始创建新文件
   const startNewFile = () => {
     if (contextMenu.node) {
-      const lastSlash = Math.max(contextMenu.node.path.lastIndexOf('/'), contextMenu.node.path.lastIndexOf('\\'));
+      const lastSlash = Math.max(
+        contextMenu.node.path.lastIndexOf('/'),
+        contextMenu.node.path.lastIndexOf('\\'),
+      );
       const parentPath = contextMenu.node.isDir
         ? contextMenu.node.path
         : contextMenu.node.path.substring(0, lastSlash);
@@ -340,16 +368,16 @@ export const Sidebar: React.FC = () => {
       if (isTauriCached()) {
         const absoluteParentPath = toAbsolutePath(parentPath);
         const filePath = `${absoluteParentPath}\\${finalName}`;
-        
+
         const { writeTextFile } = await import('@tauri-apps/plugin-fs');
         await writeTextFile(filePath, defaultContent);
-        
+
         const fullRoot = getFullRootPath();
         if (fullRoot) {
           const tree = await readDirectoryTauri(fullRoot);
           setFileTree(tree);
         }
-        
+
         openDocument(`file://${filePath}`, defaultContent, false);
       } else {
         // 浏览器环境
@@ -391,7 +419,10 @@ export const Sidebar: React.FC = () => {
   // 开始创建新目录
   const startNewDir = () => {
     if (contextMenu.node) {
-      const lastSlash = Math.max(contextMenu.node.path.lastIndexOf('/'), contextMenu.node.path.lastIndexOf('\\'));
+      const lastSlash = Math.max(
+        contextMenu.node.path.lastIndexOf('/'),
+        contextMenu.node.path.lastIndexOf('\\'),
+      );
       const parentPath = contextMenu.node.isDir
         ? contextMenu.node.path
         : contextMenu.node.path.substring(0, lastSlash);
@@ -414,10 +445,10 @@ export const Sidebar: React.FC = () => {
       if (isTauriCached()) {
         const absoluteParentPath = toAbsolutePath(parentPath);
         const dirPath = `${absoluteParentPath}\\${dirName}`;
-        
+
         const { mkdir } = await import('@tauri-apps/plugin-fs');
         await mkdir(dirPath);
-        
+
         const fullRoot = getFullRootPath();
         if (fullRoot) {
           const tree = await readDirectoryTauri(fullRoot);
@@ -439,7 +470,7 @@ export const Sidebar: React.FC = () => {
         setFileTree(tree);
       }
 
-      setExpandedDirs(prev => {
+      setExpandedDirs((prev) => {
         const newSet = new Set(prev);
         newSet.add(parentPath);
         return newSet;
@@ -465,7 +496,7 @@ export const Sidebar: React.FC = () => {
 
     if (newName && newName !== oldName) {
       // 文件夹不加 .md 后缀
-      const finalName = isDir ? newName : (newName.endsWith('.md') ? newName : `${newName}.md`);
+      const finalName = isDir ? newName : newName.endsWith('.md') ? newName : `${newName}.md`;
       const oldDocPath = `file://${path}`;
       const isNewFile = documents[oldDocPath]?.isNewFile;
 
@@ -502,13 +533,13 @@ export const Sidebar: React.FC = () => {
               // 重命名文件夹
               const oldDirHandle = await dirHandle.getDirectoryHandle(oldName);
               const newDirHandle = await dirHandle.getDirectoryHandle(finalName, { create: true });
-              
+
               // 递归复制所有内容
               await copyDirectoryContents(oldDirHandle, newDirHandle);
-              
+
               // 删除旧目录
               await dirHandle.removeEntry(oldName, { recursive: true });
-              
+
               setDirHandle(newEntryPath, newDirHandle);
             } else {
               // 重命名文件
@@ -544,8 +575,11 @@ export const Sidebar: React.FC = () => {
   };
 
   // 递归复制目录内容
-  const copyDirectoryContents = async (sourceDir: FileSystemDirectoryHandle, targetDir: FileSystemDirectoryHandle) => {
-    // @ts-ignore - FileSystemDirectoryHandle.values() is part of File System Access API
+  const copyDirectoryContents = async (
+    sourceDir: FileSystemDirectoryHandle,
+    targetDir: FileSystemDirectoryHandle,
+  ) => {
+    // @ts-expect-error - FileSystemDirectoryHandle.values() is part of File System Access API
     for await (const entry of sourceDir.values()) {
       if (entry.kind === 'file') {
         const file = await entry.getFile();
@@ -572,7 +606,7 @@ export const Sidebar: React.FC = () => {
       setDeleteState({
         path: contextMenu.node.path,
         name: contextMenu.node.name,
-        isDir: contextMenu.node.isDir
+        isDir: contextMenu.node.isDir,
       });
       closeContextMenu();
     }
@@ -586,25 +620,25 @@ export const Sidebar: React.FC = () => {
 
     try {
       const absolutePath = toAbsolutePath(path);
-      
+
       const { Command } = await import('@tauri-apps/plugin-shell');
-      
+
       // 检测操作系统
       const platform = navigator.platform.toLowerCase();
-      
+
       if (platform.includes('win')) {
         // Windows: 使用 PowerShell 移动到回收站
         const deleteMethod = isDir ? 'DeleteDirectory' : 'DeleteFile';
         const command = Command.create('powershell', [
           '-Command',
-          `Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::${deleteMethod}('${absolutePath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`
+          `Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::${deleteMethod}('${absolutePath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`,
         ]);
         await command.execute();
       } else if (platform.includes('mac')) {
         // macOS: 使用 osascript 移动到回收站
         const command = Command.create('osascript', [
           '-e',
-          `tell application "Finder" to delete POSIX file "${absolutePath}"`
+          `tell application "Finder" to delete POSIX file "${absolutePath}"`,
         ]);
         await command.execute();
       } else {
@@ -618,7 +652,7 @@ export const Sidebar: React.FC = () => {
           await command.execute();
         }
       }
-      
+
       const fullRoot = getFullRootPath();
       if (fullRoot) {
         const tree = await readDirectoryTauri(fullRoot);
@@ -713,11 +747,11 @@ export const Sidebar: React.FC = () => {
             draggable={!node.isDir}
             onDragStart={(e) => {
               if (node.isDir) return;
-              
+
               if (node.handle && node.handle.kind === 'file') {
                 setFileHandle(node.path, node.handle as FileSystemFileHandle);
               }
-              
+
               const docPath = `file://${node.path}`;
               e.dataTransfer.setData('application/x-file-path', docPath);
               e.dataTransfer.setData('text/plain', docPath);
@@ -752,10 +786,7 @@ export const Sidebar: React.FC = () => {
                 size={16}
                 className={`
                   transition-colors
-                  ${node.isDir
-                    ? 'text-[var(--accent-400)]'
-                    : 'text-[var(--editor-text-secondary)]'
-                  }
+                  ${node.isDir ? 'text-[var(--accent-400)]' : 'text-[var(--editor-text-secondary)]'}
                 `}
               />
             </div>
@@ -779,9 +810,7 @@ export const Sidebar: React.FC = () => {
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <span className="truncate text-sm text-[var(--sidebar-text)]">
-                {node.name}
-              </span>
+              <span className="truncate text-sm text-[var(--sidebar-text)]">{node.name}</span>
             )}
 
             {/* 悬停时的操作按钮 */}
@@ -802,9 +831,7 @@ export const Sidebar: React.FC = () => {
 
           {/* 子节点 */}
           {node.isDir && isExpanded && node.children && (
-            <div className="relative">
-              {renderTree(node.children, depth + 1)}
-            </div>
+            <div className="relative">{renderTree(node.children, depth + 1)}</div>
           )}
         </div>
       );
@@ -812,36 +839,34 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <div
-      className="h-full bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col select-none"
-    >
+    <div className="h-full bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col select-none">
       {/* Header */}
       <div className="h-10 flex items-center justify-between px-3 border-b border-[var(--sidebar-border)]">
-      {/* Tab切换 - 仅桌面版显示最近列表 */}
-      <div className="flex items-center gap-1">
-        <button
-          className={`px-2 py-1 text-xs font-semibold rounded transition-colors ${
-            viewMode === 'files' 
-              ? 'bg-[var(--accent-500)] text-white' 
-              : 'text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)]'
-          }`}
-          onClick={() => setViewMode('files')}
-        >
-          文件
-        </button>
-        {isTauriCached() && (
+        {/* Tab切换 - 仅桌面版显示最近列表 */}
+        <div className="flex items-center gap-1">
           <button
             className={`px-2 py-1 text-xs font-semibold rounded transition-colors ${
-              viewMode === 'recent' 
-                ? 'bg-[var(--accent-500)] text-white' 
+              viewMode === 'files'
+                ? 'bg-[var(--accent-500)] text-white'
                 : 'text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)]'
             }`}
-            onClick={() => setViewMode('recent')}
+            onClick={() => setViewMode('files')}
           >
-            最近
+            文件
           </button>
-        )}
-      </div>
+          {isTauriCached() && (
+            <button
+              className={`px-2 py-1 text-xs font-semibold rounded transition-colors ${
+                viewMode === 'recent'
+                  ? 'bg-[var(--accent-500)] text-white'
+                  : 'text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)]'
+              }`}
+              onClick={() => setViewMode('recent')}
+            >
+              最近
+            </button>
+          )}
+        </div>
         {viewMode === 'files' && (
           <div className="flex items-center gap-1">
             <button
@@ -907,12 +932,14 @@ export const Sidebar: React.FC = () => {
                     ${hoveredPath === rootPath ? 'bg-[var(--sidebar-hover)]' : ''}
                   `}
                   onClick={() => toggleDir(rootPath)}
-                  onContextMenu={(e) => handleContextMenu(e, {
-                    name: rootPath,
-                    path: getFullRootPath() || rootPath,  // 使用完整路径
-                    isDir: true,
-                    handle: rootHandle || undefined
-                  })}
+                  onContextMenu={(e) =>
+                    handleContextMenu(e, {
+                      name: rootPath,
+                      path: getFullRootPath() || rootPath, // 使用完整路径
+                      isDir: true,
+                      handle: rootHandle || undefined,
+                    })
+                  }
                   onMouseEnter={() => setHoveredPath(rootPath)}
                   onMouseLeave={() => setHoveredPath(null)}
                 >
@@ -935,117 +962,116 @@ export const Sidebar: React.FC = () => {
 
                 {/* 根文件夹内容 */}
                 {expandedDirs.has(rootPath) && (
-                  <div className="mt-0.5">
-                    {renderTree(fileTree, 1)}
-                  </div>
+                  <div className="mt-0.5">{renderTree(fileTree, 1)}</div>
                 )}
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-32 px-4 text-center">
               <FolderOpen size={32} className="text-[var(--sidebar-text-muted)] mb-2 opacity-50" />
-              <p className="text-sm text-[var(--sidebar-text-muted)]">
-                打开文件夹以查看文件
-              </p>
+              <p className="text-sm text-[var(--sidebar-text-muted)]">打开文件夹以查看文件</p>
             </div>
           )
-        ) : (
-          // 最近文件视图
-          recentFiles.length > 0 ? (
-            <div className="px-1">
-              {recentFiles.map((file) => (
-                <div
-                  key={file.path}
-                  className="group flex items-center py-1.5 px-2 cursor-pointer rounded-md hover:bg-[var(--sidebar-hover)] transition-all"
-                  onMouseEnter={() => setHoveredPath(file.path)}
-                  onMouseLeave={() => setHoveredPath(null)}
-                  onContextMenu={(e) => handleRecentFileContextMenu(e, file)}
-                  onClick={async () => {
-                    try {
-                      if (isTauriCached()) {
-                        const { readTextFile } = await import('@tauri-apps/plugin-fs');
-                        // Tauri版本：去掉file://前缀
-                        const realPath = file.path.replace(/^file:\/\//, '');
-                        const content = await readTextFile(realPath);
+        ) : // 最近文件视图
+        recentFiles.length > 0 ? (
+          <div className="px-1">
+            {recentFiles.map((file) => (
+              <div
+                key={file.path}
+                className="group flex items-center py-1.5 px-2 cursor-pointer rounded-md hover:bg-[var(--sidebar-hover)] transition-all"
+                onMouseEnter={() => setHoveredPath(file.path)}
+                onMouseLeave={() => setHoveredPath(null)}
+                onContextMenu={(e) => handleRecentFileContextMenu(e, file)}
+                onClick={async () => {
+                  try {
+                    if (isTauriCached()) {
+                      const { readTextFile } = await import('@tauri-apps/plugin-fs');
+                      // Tauri版本：去掉file://前缀
+                      const realPath = file.path.replace(/^file:\/\//, '');
+                      const content = await readTextFile(realPath);
+                      openDocument(file.path, content, false);
+                      addFile(file.path, file.name);
+                    } else {
+                      // 浏览器环境：尝试从fileStore获取文件句柄
+                      const { getFileHandle } = useFileStore.getState();
+
+                      // 去掉 file:// 前缀（存储句柄时用的是原始路径）
+                      const realPath = file.path.replace(/^file:\/\//, '');
+
+                      // 标准化路径
+                      const normalizedPath = realPath.replace(/\\/g, '/');
+
+                      // 尝试多种方式查找句柄
+                      const handle =
+                        getFileHandle(normalizedPath) ||
+                        getFileHandle(realPath) ||
+                        getFileHandle(file.name);
+
+                      if (handle && handle.kind === 'file') {
+                        const fileObj = await handle.getFile();
+                        const content = await fileObj.text();
                         openDocument(file.path, content, false);
                         addFile(file.path, file.name);
                       } else {
-                        // 浏览器环境：尝试从fileStore获取文件句柄
-                        const { getFileHandle } = useFileStore.getState();
-                        
-                        // 去掉 file:// 前缀（存储句柄时用的是原始路径）
-                        const realPath = file.path.replace(/^file:\/\//, '');
-                        
-                        // 标准化路径
-                        const normalizedPath = realPath.replace(/\\/g, '/');
-                        
-                        // 尝试多种方式查找句柄
-                        const handle = getFileHandle(normalizedPath) || 
-                                       getFileHandle(realPath) || 
-                                       getFileHandle(file.name);
-                        
-                        if (handle && handle.kind === 'file') {
-                          const fileObj = await handle.getFile();
-                          const content = await fileObj.text();
-                          openDocument(file.path, content, false);
-                          addFile(file.path, file.name);
-                        } else {
-                          // 文件句柄已失效，提示用户
-                          alert(`文件句柄已失效，请从文件树中打开。\n查找路径: ${normalizedPath}`);
-                        }
+                        // 文件句柄已失效，提示用户
+                        alert(`文件句柄已失效，请从文件树中打开。\n查找路径: ${normalizedPath}`);
                       }
-                    } catch (err) {
-                      console.error('打开最近文件失败:', err);
-                      alert(`打开文件失败: ${err}`);
                     }
-                  }}
-                >
-                  <div className="w-4 h-4 flex items-center justify-center mr-2">
-                    {file.isPinned ? (
-                      <Pin size={12} className="text-[var(--accent-500)]" />
-                    ) : (
-                      <FileText size={14} className="text-[var(--editor-text-secondary)]" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-[var(--sidebar-text)] truncate">{file.name}</div>
-                    <div className="text-xs text-[var(--sidebar-text-muted)]">{formatTime(file.lastOpened)}</div>
-                  </div>
-                  {hoveredPath === file.path && (
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        className="p-1 rounded hover:bg-[var(--sidebar-active)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)]"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          file.isPinned ? unpinFile(file.path) : pinFile(file.path);
-                        }}
-                        title={file.isPinned ? '取消置顶' : '置顶'}
-                      >
-                        {file.isPinned ? <PinOff size={12} /> : <Pin size={12} />}
-                      </button>
-                      <button
-                        className="p-1 rounded hover:bg-[var(--sidebar-active)] text-[var(--sidebar-text-muted)] hover:text-red-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFile(file.path);
-                        }}
-                        title="移除"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
+                  } catch (err) {
+                    console.error('打开最近文件失败:', err);
+                    alert(`打开文件失败: ${err}`);
+                  }
+                }}
+              >
+                <div className="w-4 h-4 flex items-center justify-center mr-2">
+                  {file.isPinned ? (
+                    <Pin size={12} className="text-[var(--accent-500)]" />
+                  ) : (
+                    <FileText size={14} className="text-[var(--editor-text-secondary)]" />
                   )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-32 px-4 text-center">
-              <Clock size={32} className="text-[var(--sidebar-text-muted)] mb-2 opacity-50" />
-              <p className="text-sm text-[var(--sidebar-text-muted)]">
-                暂无最近打开的文件
-              </p>
-            </div>
-          )
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-[var(--sidebar-text)] truncate">{file.name}</div>
+                  <div className="text-xs text-[var(--sidebar-text-muted)]">
+                    {formatTime(file.lastOpened)}
+                  </div>
+                </div>
+                {hoveredPath === file.path && (
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      className="p-1 rounded hover:bg-[var(--sidebar-active)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text)]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (file.isPinned) {
+                          unpinFile(file.path);
+                        } else {
+                          pinFile(file.path);
+                        }
+                      }}
+                      title={file.isPinned ? '取消置顶' : '置顶'}
+                    >
+                      {file.isPinned ? <PinOff size={12} /> : <Pin size={12} />}
+                    </button>
+                    <button
+                      className="p-1 rounded hover:bg-[var(--sidebar-active)] text-[var(--sidebar-text-muted)] hover:text-red-500"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile(file.path);
+                      }}
+                      title="移除"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-32 px-4 text-center">
+            <Clock size={32} className="text-[var(--sidebar-text-muted)] mb-2 opacity-50" />
+            <p className="text-sm text-[var(--sidebar-text-muted)]">暂无最近打开的文件</p>
+          </div>
         )}
       </div>
 
@@ -1081,7 +1107,10 @@ export const Sidebar: React.FC = () => {
                       const { getFileHandle } = useFileStore.getState();
                       const realPath = file.path.replace(/^file:\/\//, '');
                       const normalizedPath = realPath.replace(/\\/g, '/');
-                      const handle = getFileHandle(normalizedPath) || getFileHandle(realPath) || getFileHandle(file.name);
+                      const handle =
+                        getFileHandle(normalizedPath) ||
+                        getFileHandle(realPath) ||
+                        getFileHandle(file.name);
                       if (handle && handle.kind === 'file') {
                         const fileObj = await handle.getFile();
                         const content = await fileObj.text();
@@ -1102,12 +1131,12 @@ export const Sidebar: React.FC = () => {
                     const file = contextMenu.recentFile;
                     if (!file || !activeTabPath) return;
                     closeContextMenu();
-                    
+
                     const existingDocs = getDocumentsInPanes(activeTabPath);
                     if (existingDocs.includes(file.path)) {
                       return;
                     }
-                    
+
                     try {
                       let content: string;
                       if (isTauriCached()) {
@@ -1118,7 +1147,10 @@ export const Sidebar: React.FC = () => {
                         const { getFileHandle } = useFileStore.getState();
                         const realPath = file.path.replace(/^file:\/\//, '');
                         const normalizedPath = realPath.replace(/\\/g, '/');
-                        const handle = getFileHandle(normalizedPath) || getFileHandle(realPath) || getFileHandle(file.name);
+                        const handle =
+                          getFileHandle(normalizedPath) ||
+                          getFileHandle(realPath) ||
+                          getFileHandle(file.name);
                         if (handle && handle.kind === 'file') {
                           const fileObj = await handle.getFile();
                           content = await fileObj.text();
@@ -1151,29 +1183,12 @@ export const Sidebar: React.FC = () => {
                 }}
               />
               <div className="h-px bg-[var(--sidebar-border)] my-1" />
-              <ContextMenuItem
-                icon={Plus}
-                label="新建文档"
-                onClick={startNewFile}
-              />
-              <ContextMenuItem
-                icon={FolderPlus}
-                label="新建目录"
-                onClick={startNewDir}
-              />
+              <ContextMenuItem icon={Plus} label="新建文档" onClick={startNewFile} />
+              <ContextMenuItem icon={FolderPlus} label="新建目录" onClick={startNewDir} />
               <div className="h-px bg-[var(--sidebar-border)] my-1" />
-              <ContextMenuItem
-                icon={Pencil}
-                label="重命名"
-                onClick={startRename}
-              />
+              <ContextMenuItem icon={Pencil} label="重命名" onClick={startRename} />
               {isTauriCached() && (
-                <ContextMenuItem
-                  icon={Trash2}
-                  label="删除"
-                  onClick={startDelete}
-                  danger
-                />
+                <ContextMenuItem icon={Trash2} label="删除" onClick={startDelete} danger />
               )}
             </>
           ) : contextMenu.node ? (
@@ -1225,18 +1240,9 @@ export const Sidebar: React.FC = () => {
                 }}
               />
               <div className="h-px bg-[var(--sidebar-border)] my-1" />
-              <ContextMenuItem
-                icon={Pencil}
-                label="重命名"
-                onClick={startRename}
-              />
+              <ContextMenuItem icon={Pencil} label="重命名" onClick={startRename} />
               {isTauriCached() && (
-                <ContextMenuItem
-                  icon={Trash2}
-                  label="删除"
-                  onClick={startDelete}
-                  danger
-                />
+                <ContextMenuItem icon={Trash2} label="删除" onClick={startDelete} danger />
               )}
             </>
           ) : null}
@@ -1288,7 +1294,12 @@ interface ContextMenuItemProps {
   danger?: boolean;
 }
 
-const ContextMenuItem: React.FC<ContextMenuItemProps> = ({ icon: Icon, label, onClick, danger = false }) => (
+const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
+  icon: Icon,
+  label,
+  onClick,
+  danger = false,
+}) => (
   <button
     className={`w-full px-3 py-2 text-sm text-left hover:bg-[var(--sidebar-hover)] flex items-center gap-2.5 transition-colors ${danger ? 'text-red-500 hover:text-red-600' : ''}`}
     onClick={onClick}
@@ -1365,7 +1376,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelText = '取消',
   danger = false,
   onConfirm,
-  onCancel
+  onCancel,
 }) => (
   <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 animate-fade-in">
     <div className="bg-[var(--sidebar-surface)] border border-[var(--sidebar-border)] rounded-xl p-5 shadow-2xl min-w-[320px] max-w-[480px] animate-scale-in">

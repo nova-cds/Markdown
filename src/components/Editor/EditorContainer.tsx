@@ -15,7 +15,7 @@ export const EditorContainer: React.FC = () => {
   const activeTabPath = useEditorStore((state) => state.activeTabPath);
   const openDocument = useEditorStore((state) => state.openDocument);
   const { handleOpenFolder, handleOpenFile } = useFileOperations();
-  
+
   if (!activeDocPath || !activeTabPath) {
     return (
       <div className="h-full flex items-center justify-center bg-[var(--editor-bg)]">
@@ -24,9 +24,7 @@ export const EditorContainer: React.FC = () => {
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-[var(--editor-link)] bg-opacity-10 mb-4">
               <span className="text-4xl">📝</span>
             </div>
-            <h1 className="text-2xl font-bold text-[var(--editor-text)] mb-2">
-              Markdown 编辑器
-            </h1>
+            <h1 className="text-2xl font-bold text-[var(--editor-text)] mb-2">Markdown 编辑器</h1>
             <p className="text-[var(--editor-text)] opacity-60">
               类似 Typora 的所见即所得 Markdown 编辑器
             </p>

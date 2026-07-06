@@ -9,7 +9,7 @@ interface Props {
 
 const renderMarkdown = (text: string): React.ReactNode => {
   const lines = text.split('\n');
-  
+
   return lines.map((line, index) => {
     if (line.startsWith('### ')) {
       return (
@@ -18,7 +18,7 @@ const renderMarkdown = (text: string): React.ReactNode => {
         </h4>
       );
     }
-    
+
     if (line.startsWith('## ')) {
       return (
         <h3 key={index} className="font-semibold text-lg mt-4 mb-2 first:mt-0">
@@ -26,7 +26,7 @@ const renderMarkdown = (text: string): React.ReactNode => {
         </h3>
       );
     }
-    
+
     if (line.startsWith('- ')) {
       const content = line.replace('- ', '');
       const parts = content.split(/(\*\*[^*]+\*\*)/g);
@@ -44,11 +44,11 @@ const renderMarkdown = (text: string): React.ReactNode => {
         </div>
       );
     }
-    
+
     if (line.trim() === '') {
       return <div key={index} className="h-2" />;
     }
-    
+
     const parts = line.split(/(\*\*[^*]+\*\*)/g);
     return (
       <p key={index}>
@@ -104,8 +104,8 @@ export const UpdateNotification: React.FC<Props> = ({ onClose }) => {
         <div className="p-4 space-y-3">
           <div className="text-sm space-y-1">
             <p>
-              <span className="text-[var(--editor-text-muted)]">当前版本：</span>
-              v{getCurrentVersion()}
+              <span className="text-[var(--editor-text-muted)]">当前版本：</span>v
+              {getCurrentVersion()}
             </p>
             <p>
               <span className="text-[var(--editor-text-muted)]">最新版本：</span>

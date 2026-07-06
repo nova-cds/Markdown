@@ -6,9 +6,9 @@ type Theme = 'light' | 'dark' | 'system';
 /**
  * 主题管理 Hook
  * 读取设置中的主题配置，监听系统主题变化，动态切换 dark class
- * 
+ *
  * @returns 当前生效的主题（light 或 dark）
- * 
+ *
  * @example
  * ```tsx
  * function App() {
@@ -27,19 +27,17 @@ export function useTheme(): 'light' | 'dark' {
    */
   const updateEffectiveTheme = useCallback(() => {
     let newTheme: 'light' | 'dark';
-    
+
     if (theme === 'system') {
       // 跟随系统主题
-      newTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light';
+      newTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     } else {
       // 使用用户设置的主题
       newTheme = theme;
     }
-    
+
     setEffectiveTheme(newTheme);
-    
+
     // 更新 DOM 的 class
     const root = document.documentElement;
     if (newTheme === 'dark') {
@@ -51,6 +49,8 @@ export function useTheme(): 'light' | 'dark' {
 
   // 主题变化时更新
   useEffect(() => {
+    // updateEffectiveTheme 内同步调用 setEffectiveTheme 是有意为之
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     updateEffectiveTheme();
   }, [updateEffectiveTheme]);
 
@@ -59,12 +59,12 @@ export function useTheme(): 'light' | 'dark' {
     if (theme !== 'system') return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     // 处理系统主题变化
     const handleChange = (event: MediaQueryListEvent) => {
       const newTheme = event.matches ? 'dark' : 'light';
       setEffectiveTheme(newTheme);
-      
+
       const root = document.documentElement;
       if (newTheme === 'dark') {
         root.classList.add('dark');
@@ -75,7 +75,7 @@ export function useTheme(): 'light' | 'dark' {
 
     // 添加监听器
     mediaQuery.addEventListener('change', handleChange);
-    
+
     return () => {
       mediaQuery.removeEventListener('change', handleChange);
     };

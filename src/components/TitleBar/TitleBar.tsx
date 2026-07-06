@@ -2,7 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { useEditorStore, useSettingsStore, useUpdateStore, useSplitStore } from '../../stores';
 import { useSaveToFile, getFileName } from '../../hooks/useAutoSave';
 import { isTauriCached } from '../../utils/platform';
-import { FileText, X, Save, Moon, Sun, Keyboard, Settings, Minus, Square, X as CloseIcon, LucideIcon, Plus, ArrowUpCircle, Columns, Rows } from 'lucide-react';
+import {
+  FileText,
+  X,
+  Save,
+  Moon,
+  Sun,
+  Keyboard,
+  Settings,
+  Minus,
+  Square,
+  X as CloseIcon,
+  LucideIcon,
+  Plus,
+  ArrowUpCircle,
+  Columns,
+  Rows,
+} from 'lucide-react';
 import { useFileOperations } from '../../hooks/useFileOperations';
 import { UpdateNotification } from '../Update/UpdateNotification';
 import { CloseTabConfirm } from '../Editor/CloseTabConfirm';
@@ -38,7 +54,9 @@ export const TitleBar: React.FC = () => {
   const { theme, toggleTheme } = useSettingsStore();
   const { handleNewFile } = useFileOperations();
   const { hasUpdate, latestVersion } = useUpdateStore();
-  const canSplit = useSplitStore((state) => activeTabPath ? state.canSplit(activeTabPath) : false);
+  const canSplit = useSplitStore((state) =>
+    activeTabPath ? state.canSplit(activeTabPath) : false,
+  );
   const splitPane = useSplitStore((state) => state.splitPane);
   const getCurrentState = useSplitStore((state) => state.getCurrentState);
   const getDocumentsInPanes = useSplitStore((state) => state.getDocumentsInPanes);
@@ -95,11 +113,11 @@ export const TitleBar: React.FC = () => {
     const paneCount = getPaneCount(tabPath);
     const splitState = getCurrentState(tabPath);
     const docsInPanes = getDocumentsInPanes(tabPath);
-    
+
     const hasMultiplePanes = paneCount > 1;
     const hasMultipleDocsInPanes = docsInPanes.length > 1;
     const hasOtherDocsInPanes = docsInPanes.length === 1 && docsInPanes[0] !== tabPath;
-    
+
     const allTabs = useEditorStore.getState().tabs;
     let isDocInOtherSplit = false;
     for (const otherTab of allTabs) {
@@ -111,7 +129,7 @@ export const TitleBar: React.FC = () => {
         }
       }
     }
-    
+
     if (hasMultiplePanes || hasMultipleDocsInPanes) {
       const docsToClose = docsInPanes.length > 0 ? docsInPanes : [tabPath];
       setPendingCloseTab(tabPath);
@@ -126,7 +144,7 @@ export const TitleBar: React.FC = () => {
       }
       closeDocument(tabPath);
       cleanupTabSplitState(tabPath);
-      
+
       const { tabs } = useEditorStore.getState();
       if (tabs.length === 0) {
         useEditorStore.setState({ activeDocPath: null, activeTabPath: null });
@@ -161,7 +179,7 @@ export const TitleBar: React.FC = () => {
   const confirmCloseTab = () => {
     if (pendingCloseTab) {
       closeDocument(pendingCloseTab);
-      
+
       for (const docPath of pendingCloseDocuments) {
         if (docPath !== pendingCloseTab) {
           const { documents, activeDocPath } = useEditorStore.getState();
@@ -171,9 +189,9 @@ export const TitleBar: React.FC = () => {
           }
         }
       }
-      
+
       cleanupTabSplitState(pendingCloseTab);
-      
+
       const { tabs } = useEditorStore.getState();
       if (tabs.length === 0) {
         useEditorStore.setState({ activeDocPath: null, activeTabPath: null });
@@ -192,7 +210,7 @@ export const TitleBar: React.FC = () => {
 
   return (
     <>
-      <div 
+      <div
         className="h-10 bg-[var(--titlebar-bg)] border-b border-[var(--editor-border)] flex items-center select-none"
         data-tauri-drag-region
       >
@@ -223,9 +241,10 @@ export const TitleBar: React.FC = () => {
                       group relative flex items-center h-[36px] px-3 cursor-pointer
                       transition-all duration-[var(--transition-fast)]
                       flex-1 min-w-[80px] max-w-[180px]
-                      ${isActive
-                        ? 'bg-[var(--editor-bg)] text-[var(--editor-text)] shadow-[0_-2px_8px_rgba(0,0,0,0.1)]'
-                        : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-hover-bg)] hover:text-[var(--editor-text)]'
+                      ${
+                        isActive
+                          ? 'bg-[var(--editor-bg)] text-[var(--editor-text)] shadow-[0_-2px_8px_rgba(0,0,0,0.1)]'
+                          : 'bg-[var(--tab-inactive-bg)] text-[var(--editor-text-secondary)] hover:bg-[var(--tab-hover-bg)] hover:text-[var(--editor-text)]'
                       }
                     `}
                     style={{ borderRadius: '12px 12px 0 0' }}
@@ -267,7 +286,10 @@ export const TitleBar: React.FC = () => {
               })}
               <button
                 className="flex-shrink-0 w-8 h-8 flex items-center justify-center text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] hover:bg-[var(--tab-active-bg)] transition-colors mb-0.5"
-                onClick={(e) => { e.stopPropagation(); handleNewFile(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleNewFile();
+                }}
                 title="新建文档"
               >
                 <Plus size={16} />
@@ -276,17 +298,16 @@ export const TitleBar: React.FC = () => {
           )}
         </div>
 
-        <div 
-          className="w-20 h-full flex-shrink-0"
-          data-tauri-drag-region
-        />
+        <div className="w-20 h-full flex-shrink-0" data-tauri-drag-region />
 
         <div className="flex items-center h-full flex-shrink-0">
-
           {activeDocPath && (
             <button
               className="w-9 h-9 flex items-center justify-center text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] hover:bg-[var(--tab-active-bg)] transition-colors"
-              onClick={(e) => { e.stopPropagation(); saveToFile(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                saveToFile();
+              }}
               title="保存到本地文件 (Ctrl+S)"
             >
               <Save size={16} />
@@ -297,24 +318,20 @@ export const TitleBar: React.FC = () => {
             <>
               <TitleBarButton
                 icon={Columns}
-                title={canSplit ? "垂直分栏 (Alt+Shift++)" : "已达最大窗格数"}
+                title={canSplit ? '垂直分栏 (Alt+Shift++)' : '已达最大窗格数'}
                 onClick={handleSplitVertical}
                 disabled={!canSplit}
               />
               <TitleBarButton
                 icon={Rows}
-                title={canSplit ? "水平分栏 (Alt+Shift+-)" : "已达最大窗格数"}
+                title={canSplit ? '水平分栏 (Alt+Shift+-)' : '已达最大窗格数'}
                 onClick={handleSplitHorizontal}
                 disabled={!canSplit}
               />
             </>
           )}
 
-          <TitleBarButton
-            icon={Keyboard}
-            title="快捷键"
-            onClick={() => setShowShortcuts(true)}
-          />
+          <TitleBarButton icon={Keyboard} title="快捷键" onClick={() => setShowShortcuts(true)} />
 
           <TitleBarButton
             icon={theme === 'dark' ? Sun : Moon}
@@ -367,13 +384,9 @@ export const TitleBar: React.FC = () => {
         </div>
       </div>
 
-      {showShortcuts && (
-        <ShortcutsDialog onClose={() => setShowShortcuts(false)} />
-      )}
+      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
 
-      {showUpdateDialog && (
-        <UpdateNotification onClose={() => setShowUpdateDialog(false)} />
-      )}
+      {showUpdateDialog && <UpdateNotification onClose={() => setShowUpdateDialog(false)} />}
 
       {showCloseConfirm && (
         <CloseTabConfirm
@@ -411,13 +424,14 @@ const TitleBarButton: React.FC<TitleBarButtonProps> = ({
         flex items-center justify-center
         ${isWindowControl ? 'w-11 h-10' : 'w-8 h-8 rounded-md mx-0.5'}
         transition-all duration-[var(--transition-fast)]
-        ${disabled
-          ? 'opacity-40 cursor-not-allowed'
-          : isClose
-            ? 'hover:bg-[var(--error-500)] hover:text-white'
-            : isActive
-              ? 'bg-[var(--sidebar-active)]'
-              : 'hover:bg-[var(--toolbar-hover)]'
+        ${
+          disabled
+            ? 'opacity-40 cursor-not-allowed'
+            : isClose
+              ? 'hover:bg-[var(--error-500)] hover:text-white'
+              : isActive
+                ? 'bg-[var(--sidebar-active)]'
+                : 'hover:bg-[var(--toolbar-hover)]'
         }
         text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)]
       `}
@@ -440,40 +454,50 @@ const TitleBarButton: React.FC<TitleBarButtonProps> = ({
 
 const ShortcutsDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const shortcuts = [
-    { category: '文件操作', items: [
-      { key: 'Ctrl + S', action: '保存文件' },
-    ]},
-    { category: '编辑操作', items: [
-      { key: 'Ctrl + B', action: '加粗' },
-      { key: 'Ctrl + I', action: '斜体' },
-      { key: 'Ctrl + D', action: '删除线' },
-      { key: 'Ctrl + `', action: '行内代码' },
-    ]},
-    { category: '标题', items: [
-      { key: 'Ctrl + 1', action: '一级标题' },
-      { key: 'Ctrl + 2', action: '二级标题' },
-      { key: 'Ctrl + 3', action: '三级标题' },
-    ]},
-    { category: '分栏操作', items: [
-      { key: 'Alt + Shift + +', action: '垂直分栏' },
-      { key: 'Alt + Shift + -', action: '水平分栏' },
-      { key: 'Alt + 方向键', action: '切换窗格' },
-      { key: 'Alt + Shift + W', action: '关闭当前窗格' },
-    ]},
-    { category: '其他', items: [
-      { key: 'Ctrl + M', action: '插入表格' },
-      { key: 'Ctrl + Z', action: '撤销' },
-      { key: 'Ctrl + Shift + Z', action: '重做' },
-    ]},
+    { category: '文件操作', items: [{ key: 'Ctrl + S', action: '保存文件' }] },
+    {
+      category: '编辑操作',
+      items: [
+        { key: 'Ctrl + B', action: '加粗' },
+        { key: 'Ctrl + I', action: '斜体' },
+        { key: 'Ctrl + D', action: '删除线' },
+        { key: 'Ctrl + `', action: '行内代码' },
+      ],
+    },
+    {
+      category: '标题',
+      items: [
+        { key: 'Ctrl + 1', action: '一级标题' },
+        { key: 'Ctrl + 2', action: '二级标题' },
+        { key: 'Ctrl + 3', action: '三级标题' },
+      ],
+    },
+    {
+      category: '分栏操作',
+      items: [
+        { key: 'Alt + Shift + +', action: '垂直分栏' },
+        { key: 'Alt + Shift + -', action: '水平分栏' },
+        { key: 'Alt + 方向键', action: '切换窗格' },
+        { key: 'Alt + Shift + W', action: '关闭当前窗格' },
+      ],
+    },
+    {
+      category: '其他',
+      items: [
+        { key: 'Ctrl + M', action: '插入表格' },
+        { key: 'Ctrl + Z', action: '撤销' },
+        { key: 'Ctrl + Shift + Z', action: '重做' },
+      ],
+    },
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
-      
+
       <div className="relative bg-[var(--editor-bg)] rounded-xl shadow-2xl border border-[var(--editor-border)] w-[500px] max-h-[80vh] overflow-hidden animate-scale-in">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--editor-border)]">
           <div className="flex items-center gap-2">
@@ -487,7 +511,7 @@ const ShortcutsDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <X size={18} />
           </button>
         </div>
-        
+
         <div className="p-4 overflow-y-auto max-h-[calc(80vh-60px)]">
           {shortcuts.map((group) => (
             <div key={group.category} className="mb-4 last:mb-0">
@@ -496,7 +520,7 @@ const ShortcutsDialog: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </h3>
               <div className="space-y-1">
                 {group.items.map((item) => (
-                  <div 
+                  <div
                     key={item.key}
                     className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-[var(--sidebar-hover)] transition-colors"
                   >

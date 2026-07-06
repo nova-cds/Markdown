@@ -142,34 +142,40 @@ const StatusBar: React.FC = () => {
         </span>
       </div>
       <div className="flex items-center gap-4 text-[var(--statusbar-text)]">
-        <span 
-          className="cursor-help relative group"
-        >
+        <span className="cursor-help relative group">
           <span className="opacity-70">{wordCount} 字</span>
-          <span 
+          <span
             className="absolute bottom-full right-0 mb-2 px-3 py-2 text-xs rounded-lg shadow-2xl whitespace-nowrap pointer-events-none z-[100] border font-medium hidden group-hover:block"
-            style={{ 
+            style={{
               backgroundColor: isDark ? 'rgb(30, 41, 59)' : 'rgb(255, 255, 255)',
               color: isDark ? 'rgb(241, 245, 249)' : 'rgb(15, 23, 42)',
-              borderColor: isDark ? 'rgb(71, 85, 105)' : 'rgb(148, 163, 184)'
+              borderColor: isDark ? 'rgb(71, 85, 105)' : 'rgb(148, 163, 184)',
             }}
           >
             <div className="flex justify-between gap-4">
-              <span style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(71, 85, 105)' }}>字数</span>
+              <span style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(71, 85, 105)' }}>
+                字数
+              </span>
               <span>{wordCount}</span>
             </div>
             <div className="flex justify-between gap-4 mt-1">
-              <span style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(71, 85, 105)' }}>Markdown文本</span>
+              <span style={{ color: isDark ? 'rgb(148, 163, 184)' : 'rgb(71, 85, 105)' }}>
+                Markdown文本
+              </span>
               <span>{markdownLength}</span>
             </div>
           </span>
         </span>
         <span className={`flex items-center gap-1 ${getStatusColor()}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${
-            saveStatus === 'saving' ? 'bg-[var(--warning-500)] animate-pulse' :
-            saveStatus === 'unsaved' ? 'bg-[var(--error-500)]' :
-            'bg-[var(--success-500)]'
-          }`} />
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              saveStatus === 'saving'
+                ? 'bg-[var(--warning-500)] animate-pulse'
+                : saveStatus === 'unsaved'
+                  ? 'bg-[var(--error-500)]'
+                  : 'bg-[var(--success-500)]'
+            }`}
+          />
           {getStatusText()}
         </span>
         <span className="opacity-70">Markdown</span>

@@ -20,11 +20,11 @@ let _isTauriAsyncCache: boolean | null = null;
 
 export const isTauriCached = (): boolean => {
   if (_isTauriCache === null) {
-    _isTauriCache = typeof window !== 'undefined' && (
-      '__TAURI__' in window ||
-      '__TAURI_INTERNALS__' in window ||
-      navigator.userAgent.includes('Tauri')
-    );
+    _isTauriCache =
+      typeof window !== 'undefined' &&
+      ('__TAURI__' in window ||
+        '__TAURI_INTERNALS__' in window ||
+        navigator.userAgent.includes('Tauri'));
   }
   return _isTauriCache;
 };
@@ -33,7 +33,7 @@ export const waitForTauri = async (): Promise<boolean> => {
   if (_isTauriAsyncCache !== null) {
     return _isTauriAsyncCache;
   }
-  
+
   try {
     const { isTauri: checkTauri } = await import('@tauri-apps/api/core');
     const result = await checkTauri();
@@ -115,11 +115,13 @@ export const fileOps = {
   },
 
   // 读取目录
-  async readDir(path: string): Promise<Array<{ name: string; isFile: boolean; isDirectory: boolean }>> {
+  async readDir(
+    path: string,
+  ): Promise<Array<{ name: string; isFile: boolean; isDirectory: boolean }>> {
     if (isTauriCached()) {
       const { readDir } = await import('@tauri-apps/plugin-fs');
       const entries = await readDir(path);
-      return entries.map(entry => ({
+      return entries.map((entry) => ({
         name: entry.name!,
         isFile: entry.isFile!,
         isDirectory: entry.isDirectory!,

@@ -55,8 +55,8 @@ export const useUpdateStore = create<UpdateState>()(
     }),
     {
       name: 'update-storage',
-    }
-  )
+    },
+  ),
 );
 
 if (typeof window !== 'undefined') {

@@ -22,7 +22,7 @@ interface RecentFilesState {
   recentFiles: RecentFile[];
   /** 最大存储数量 */
   maxCount: number;
-  
+
   /** 添加/更新最近文件 */
   addFile: (path: string, name: string) => void;
   /** 移除最近文件 */
@@ -69,7 +69,7 @@ export function formatTime(timestamp: number): string {
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  
+
   if (minutes < 1) return '刚刚';
   if (minutes < 60) return `${minutes}分钟前`;
   if (hours < 24) return `${hours}小时前`;
@@ -83,19 +83,19 @@ export function formatTime(timestamp: number): string {
 export const useRecentFilesStore = create<RecentFilesState>((set, get) => ({
   recentFiles: loadFromStorage(),
   maxCount: MAX_COUNT,
-  
+
   addFile: (path: string, name: string) => {
     const { recentFiles, maxCount } = get();
-    const existing = recentFiles.findIndex(f => f.path === path);
-    
+    const existing = recentFiles.findIndex((f) => f.path === path);
+
     let newFiles = [...recentFiles];
-    
+
     if (existing >= 0) {
       // 更新已存在的文件
       newFiles[existing] = {
         ...newFiles[existing],
         name,
-        lastOpened: Date.now()
+        lastOpened: Date.now(),
       };
       // 移到顶部（如果未置顶）
       const file = newFiles.splice(existing, 1)[0];
@@ -106,53 +106,51 @@ export const useRecentFilesStore = create<RecentFilesState>((set, get) => ({
         path,
         name,
         lastOpened: Date.now(),
-        isPinned: false
+        isPinned: false,
       });
     }
-    
+
     // 移除超出限制的文件（置顶的除外）
-    const pinnedCount = newFiles.filter(f => f.isPinned).length;
-    const unpinned = newFiles.filter(f => !f.isPinned);
+    const pinnedCount = newFiles.filter((f) => f.isPinned).length;
+    const unpinned = newFiles.filter((f) => !f.isPinned);
     if (unpinned.length > maxCount - pinnedCount) {
       unpinned.splice(maxCount - pinnedCount);
-      newFiles = [...newFiles.filter(f => f.isPinned), ...unpinned];
+      newFiles = [...newFiles.filter((f) => f.isPinned), ...unpinned];
     }
-    
+
     // 按置顶和时间排序（置顶文件保持在顶部）
     newFiles.sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
       return b.lastOpened - a.lastOpened;
     });
-    
+
     saveToStorage(newFiles);
     set({ recentFiles: newFiles });
   },
-  
+
   removeFile: (path: string) => {
-    const newFiles = get().recentFiles.filter(f => f.path !== path);
+    const newFiles = get().recentFiles.filter((f) => f.path !== path);
     saveToStorage(newFiles);
     set({ recentFiles: newFiles });
   },
-  
+
   clearAll: () => {
     saveToStorage([]);
     set({ recentFiles: [] });
   },
-  
+
   pinFile: (path: string) => {
-    const newFiles = get().recentFiles.map(f => 
-      f.path === path ? { ...f, isPinned: true } : f
+    const newFiles = get().recentFiles.map((f) => (f.path === path ? { ...f, isPinned: true } : f));
+    saveToStorage(newFiles);
+    set({ recentFiles: newFiles });
+  },
+
+  unpinFile: (path: string) => {
+    const newFiles = get().recentFiles.map((f) =>
+      f.path === path ? { ...f, isPinned: false } : f,
     );
     saveToStorage(newFiles);
     set({ recentFiles: newFiles });
   },
-  
-  unpinFile: (path: string) => {
-    const newFiles = get().recentFiles.map(f => 
-      f.path === path ? { ...f, isPinned: false } : f
-    );
-    saveToStorage(newFiles);
-    set({ recentFiles: newFiles });
-  }
 }));

@@ -66,15 +66,13 @@ export const useSettingsStore = create<SettingsState>()(
       getEffectiveTheme: () => {
         const { theme } = get();
         if (theme === 'system') {
-          return window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light';
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         return theme;
       },
     }),
     {
       name: 'md-editor-settings',
-    }
-  )
+    },
+  ),
 );

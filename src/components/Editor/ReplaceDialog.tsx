@@ -4,7 +4,15 @@ import Vditor from 'vditor';
 // 扩展Window类型，添加find方法
 declare global {
   interface Window {
-    find(text: string, caseSensitive?: boolean, backward?: boolean, wrapAround?: boolean, wholeWord?: boolean, searchInFrames?: boolean, showDialog?: boolean): boolean;
+    find(
+      text: string,
+      caseSensitive?: boolean,
+      backward?: boolean,
+      wrapAround?: boolean,
+      wholeWord?: boolean,
+      searchInFrames?: boolean,
+      showDialog?: boolean,
+    ): boolean;
   }
 }
 
@@ -16,19 +24,15 @@ interface ReplaceDialogProps {
 
 /**
  * 查找替换弹窗组件
- * 
+ *
  * 功能：
  * - 查找：使用浏览器原生window.find()查找并高亮文本
  * - 替换：替换当前选中的文本
  * - 全部替换：替换所有匹配项
- * 
+ *
  * 使用浏览器原生查找功能，支持高亮和选中效果
  */
-export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
-  isOpen,
-  onClose,
-  vditor,
-}) => {
+export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({ isOpen, onClose, vditor }) => {
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
   const [matchCount, setMatchCount] = useState(0);
@@ -47,22 +51,23 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
 
   // 清除所有高亮
   const clearHighlights = useCallback(() => {
-    const editorElement = document.querySelector('.vditor-ir .vditor-reset') ||
-                        document.querySelector('.vditor-sv .vditor-reset') ||
-                        document.querySelector('.vditor-wysiwyg .vditor-reset') ||
-                        document.querySelector('.vditor-reset');
-    
+    const editorElement =
+      document.querySelector('.vditor-ir .vditor-reset') ||
+      document.querySelector('.vditor-sv .vditor-reset') ||
+      document.querySelector('.vditor-wysiwyg .vditor-reset') ||
+      document.querySelector('.vditor-reset');
+
     if (!editorElement) return;
-    
+
     const highlights = editorElement.querySelectorAll('.find-highlight');
-    highlights.forEach(el => {
+    highlights.forEach((el) => {
       const parent = el.parentNode;
       if (parent) {
         parent.replaceChild(document.createTextNode(el.textContent || ''), el);
         parent.normalize();
       }
     });
-    
+
     // 清除选区
     const selection = window.getSelection();
     if (selection) {
@@ -117,11 +122,12 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
     if (!findText || !vditor) return;
 
     // 获取编辑器元素
-    const editorElement = document.querySelector('.vditor-ir .vditor-reset') ||
-                        document.querySelector('.vditor-sv .vditor-reset') ||
-                        document.querySelector('.vditor-wysiwyg .vditor-reset') ||
-                        document.querySelector('.vditor-reset');
-    
+    const editorElement =
+      document.querySelector('.vditor-ir .vditor-reset') ||
+      document.querySelector('.vditor-sv .vditor-reset') ||
+      document.querySelector('.vditor-wysiwyg .vditor-reset') ||
+      document.querySelector('.vditor-reset');
+
     if (!editorElement) {
       alert('无法找到编辑区域');
       return;
@@ -131,19 +137,19 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
     clearHighlights();
 
     // 查找并高亮所有匹配
-    const matches: {node: Text, start: number, end: number}[] = [];
+    const matches: { node: Text; start: number; end: number }[] = [];
     const walker = document.createTreeWalker(editorElement, NodeFilter.SHOW_TEXT, null);
     const regex = new RegExp(escapeRegExp(findText), 'gi');
-    
+
     let node;
-    while (node = walker.nextNode() as Text) {
+    while ((node = walker.nextNode() as Text)) {
       const text = node.textContent || '';
       let match;
-      while (match = regex.exec(text)) {
+      while ((match = regex.exec(text))) {
         matches.push({
           node,
           start: match.index,
-          end: match.index + findText.length
+          end: match.index + findText.length,
         });
       }
     }
@@ -162,14 +168,14 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
       const range = document.createRange();
       range.setStart(match.node, match.start);
       range.setEnd(match.node, match.end);
-      
+
       const span = document.createElement('span');
       span.className = 'find-highlight';
       span.style.backgroundColor = '#ffeb3b';
       span.style.color = '#000';
       span.style.borderRadius = '2px';
       span.dataset.matchIndex = String(i + 1);
-      
+
       range.surroundContents(span);
     }
 
@@ -188,16 +194,17 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
     if (!findText || matchCount === 0) return;
 
     // 获取编辑器元素
-    const editorElement = document.querySelector('.vditor-ir .vditor-reset') ||
-                        document.querySelector('.vditor-sv .vditor-reset') ||
-                        document.querySelector('.vditor-wysiwyg .vditor-reset') ||
-                        document.querySelector('.vditor-reset');
-    
+    const editorElement =
+      document.querySelector('.vditor-ir .vditor-reset') ||
+      document.querySelector('.vditor-sv .vditor-reset') ||
+      document.querySelector('.vditor-wysiwyg .vditor-reset') ||
+      document.querySelector('.vditor-reset');
+
     if (!editorElement) return;
 
     // 重置所有高亮颜色
     const highlights = editorElement.querySelectorAll('.find-highlight');
-    highlights.forEach(el => {
+    highlights.forEach((el) => {
       (el as HTMLElement).style.backgroundColor = '#ffeb3b';
     });
 
@@ -206,7 +213,9 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
     setCurrentMatch(nextIndex);
 
     // 找到并滚动到下一个匹配
-    const nextHighlight = editorElement.querySelector(`.find-highlight[data-match-index="${nextIndex}"]`) as HTMLElement;
+    const nextHighlight = editorElement.querySelector(
+      `.find-highlight[data-match-index="${nextIndex}"]`,
+    ) as HTMLElement;
     if (nextHighlight) {
       nextHighlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
       nextHighlight.style.backgroundColor = '#ff9800'; // 当前匹配用不同颜色
@@ -220,34 +229,36 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
     if (!findText || !vditor) return;
 
     // 获取编辑器元素
-    const editorElement = document.querySelector('.vditor-ir .vditor-reset') ||
-                        document.querySelector('.vditor-sv .vditor-reset') ||
-                        document.querySelector('.vditor-wysiwyg .vditor-reset') ||
-                        document.querySelector('.vditor-reset');
-    
+    const editorElement =
+      document.querySelector('.vditor-ir .vditor-reset') ||
+      document.querySelector('.vditor-sv .vditor-reset') ||
+      document.querySelector('.vditor-wysiwyg .vditor-reset') ||
+      document.querySelector('.vditor-reset');
+
     if (!editorElement) return;
 
     // 找到当前高亮的匹配（橙色背景）
-    const currentHighlight = editorElement.querySelector('.find-highlight[style*="rgb(255, 152, 0)"]') ||
-                            editorElement.querySelector('.find-highlight[style*="#ff9800"]');
-    
+    const currentHighlight =
+      editorElement.querySelector('.find-highlight[style*="rgb(255, 152, 0)"]') ||
+      editorElement.querySelector('.find-highlight[style*="#ff9800"]');
+
     if (currentHighlight) {
       // 创建range选中当前高亮的文本
       const range = document.createRange();
       range.selectNodeContents(currentHighlight);
-      
+
       const selection = window.getSelection();
       if (selection) {
         selection.removeAllRanges();
         selection.addRange(range);
-        
+
         // 使用execCommand替换
         document.execCommand('insertText', false, replaceText);
-        
+
         // 更新匹配数量
         const newCount = matchCount - 1;
         setMatchCount(newCount);
-        
+
         if (newCount > 0) {
           // 重新查找以更新高亮
           setTimeout(() => {
@@ -279,10 +290,10 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
         // 执行全部替换
         const newContent = content.replace(regex, replaceText);
         vditor.setValue(newContent);
-        
+
         // 提示替换数量
         alert(`已替换 ${count} 处`);
-        
+
         // 重置状态
         setMatchCount(0);
       } else {
@@ -316,13 +327,16 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
       {/* 遮罩层 */}
-      <div 
+      <div
         className="absolute inset-0"
-        onClick={() => { clearHighlights(); onClose(); }}
+        onClick={() => {
+          clearHighlights();
+          onClose();
+        }}
       />
-      
+
       {/* 弹窗内容 */}
-      <div 
+      <div
         className="relative bg-[var(--editor-bg)] border border-[var(--editor-border)] rounded-lg shadow-xl p-5 min-w-[360px] animate-in fade-in slide-in-from-top-4 duration-200"
         onClick={stopPropagation}
         onKeyDown={stopPropagation}
@@ -333,18 +347,21 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-medium text-[var(--editor-text)]">查找和替换</h3>
           <button
-            onClick={() => { clearHighlights(); onClose(); }}
+            onClick={() => {
+              clearHighlights();
+              onClose();
+            }}
             className="p-1 rounded hover:bg-[var(--editor-code-bg)] text-[var(--editor-text-secondary)] hover:text-[var(--editor-text)] transition-colors"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
             >
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -352,14 +369,12 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
             </svg>
           </button>
         </div>
-        
+
         {/* 内容区域 */}
         <div className="space-y-4">
           {/* 查找输入框 */}
           <div>
-            <label className="block text-sm mb-1.5 text-[var(--editor-text)]">
-              查找内容：
-            </label>
+            <label className="block text-sm mb-1.5 text-[var(--editor-text)]">查找内容：</label>
             <input
               ref={findInputRef}
               type="text"
@@ -379,12 +394,10 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
               </div>
             )}
           </div>
-          
+
           {/* 替换输入框 */}
           <div>
-            <label className="block text-sm mb-1.5 text-[var(--editor-text)]">
-              替换为：
-            </label>
+            <label className="block text-sm mb-1.5 text-[var(--editor-text)]">替换为：</label>
             <input
               type="text"
               value={replaceText}
@@ -394,7 +407,7 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
               placeholder="输入替换内容（可为空）"
             />
           </div>
-          
+
           {/* 按钮组 */}
           <div className="flex gap-2 pt-2">
             {/* 查找下一个按钮 */}
@@ -405,7 +418,7 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
             >
               {matchCount > 0 ? '查找下一个' : '查找'}
             </button>
-            
+
             <button
               onClick={handleReplace}
               disabled={!findText}
@@ -413,7 +426,7 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
             >
               替换
             </button>
-            
+
             <button
               onClick={handleReplaceAll}
               disabled={!findText}
@@ -423,15 +436,21 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({
             </button>
           </div>
         </div>
-        
+
         {/* 快捷键提示 */}
         <div className="mt-4 pt-3 border-t border-[var(--editor-border)] text-xs text-[var(--editor-text-secondary)]">
           <div className="flex items-center gap-4">
             <span>
-              <kbd className="px-1.5 py-0.5 bg-[var(--editor-code-bg)] border border-[var(--editor-border)] rounded text-[10px]">Enter</kbd> 查找下一个
+              <kbd className="px-1.5 py-0.5 bg-[var(--editor-code-bg)] border border-[var(--editor-border)] rounded text-[10px]">
+                Enter
+              </kbd>{' '}
+              查找下一个
             </span>
             <span>
-              <kbd className="px-1.5 py-0.5 bg-[var(--editor-code-bg)] border border-[var(--editor-border)] rounded text-[10px]">Esc</kbd> 关闭
+              <kbd className="px-1.5 py-0.5 bg-[var(--editor-code-bg)] border border-[var(--editor-border)] rounded text-[10px]">
+                Esc
+              </kbd>{' '}
+              关闭
             </span>
           </div>
         </div>

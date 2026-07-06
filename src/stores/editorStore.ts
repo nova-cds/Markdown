@@ -23,20 +23,24 @@ const STORAGE_KEY_TABS = 'md-editor-tabs';
 const STORAGE_KEY_ACTIVE_PATH = 'md-editor-active-path';
 
 // 从 localStorage 恢复数据
-function loadFromStorage(): { documents: Record<string, DocumentState>; tabs: string[]; activeDocPath: string | null } {
+function loadFromStorage(): {
+  documents: Record<string, DocumentState>;
+  tabs: string[];
+  activeDocPath: string | null;
+} {
   try {
     const savedDocs = JSON.parse(localStorage.getItem(STORAGE_KEY_DOCS) || '{}');
     const savedTabs = JSON.parse(localStorage.getItem(STORAGE_KEY_TABS) || '[]');
     const savedActivePath = localStorage.getItem(STORAGE_KEY_ACTIVE_PATH);
-    
+
     const documents: Record<string, DocumentState> = {};
-    
+
     // 不再自动恢复任何文档，让用户手动打开文件
     // 清理所有旧数据
     localStorage.removeItem(STORAGE_KEY_DOCS);
     localStorage.removeItem(STORAGE_KEY_TABS);
     localStorage.removeItem(STORAGE_KEY_ACTIVE_PATH);
-    
+
     return { documents, tabs: [], activeDocPath: null };
   } catch (e) {
     console.error('[EditorStore] 恢复数据失败:', e);
@@ -140,7 +144,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
       activeTabPath: path,
       saveStatus: isNew ? 'unsaved' : 'saved',
     });
-    
+
     // 记录到最近文件
     const { addFile } = useRecentFilesStore.getState();
     const fileName = path.split('/').pop()?.split('\\').pop() || path;
@@ -181,7 +185,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
         },
       });
     }
-    
+
     // 记录到最近文件
     const { addFile } = useRecentFilesStore.getState();
     const fileName = path.split('/').pop()?.split('\\').pop() || path;
@@ -254,7 +258,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
   },
 
   setActiveDocument: (path: string | null) => set({ activeDocPath: path, activeTabPath: path }),
-  
+
   setActiveTab: (path: string | null) => set({ activeTabPath: path }),
 
   renameDocument: (oldPath: string, newPath: string) => {
@@ -263,7 +267,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
     if (!doc) return;
 
     const { [oldPath]: _, ...restDocs } = documents;
-    const newTabs = tabs.map(t => t === oldPath ? newPath : t);
+    const newTabs = tabs.map((t) => (t === oldPath ? newPath : t));
     const newActivePath = activeDocPath === oldPath ? newPath : activeDocPath;
 
     set({
@@ -278,7 +282,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
 
   setWordCount: (count: number) => set({ wordCount: count }),
   setMarkdownLength: (length: number) => set({ markdownLength: length }),
-  
+
   setOutlineVisible: (path: string, visible: boolean) => {
     const { documents } = get();
     const doc = documents[path];
@@ -294,7 +298,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
       });
     }
   },
-  
+
   setEditorMode: (path: string, mode: EditorMode) => {
     const { documents } = get();
     const doc = documents[path];
@@ -310,7 +314,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
       });
     }
   },
-  
+
   setScrollPosition: (path: string, position: number) => {
     const { documents } = get();
     const doc = documents[path];
@@ -326,7 +330,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
       });
     }
   },
-  
+
   setPreviewMode: (path: string, mode: PreviewMode) => {
     const { documents } = get();
     const doc = documents[path];
@@ -342,7 +346,7 @@ export const useEditorStore = create<EditorStateStore>((set, get) => ({
       });
     }
   },
-  
+
   updateFilePath: (docPath: string, filePath: string) => {
     const { documents } = get();
     set({

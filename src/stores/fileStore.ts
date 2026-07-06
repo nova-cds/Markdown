@@ -56,55 +56,61 @@ export const useFileStore = create<FileState>((set, get) => ({
   // 刷新文件树 - 重新扫描目录
   refreshFileTree: async () => {
     const { rootHandle, rootPath, dirHandles } = get();
-    
+
     if (!rootHandle || !rootPath) {
       return;
     }
-    
+
     set({ isLoading: true });
-    
+
     try {
       const readDirectoryRecursive = async (
-        dirHandle: FileSystemDirectoryHandle, 
-        basePath: string
+        dirHandle: FileSystemDirectoryHandle,
+        basePath: string,
       ): Promise<TreeNode[]> => {
         const nodes: TreeNode[] = [];
-        
+
         const newDirHandles = new Map(get().dirHandles);
         newDirHandles.set(basePath, dirHandle);
         set({ dirHandles: newDirHandles });
-        
+
         for await (const entry of (dirHandle as any).values()) {
           const nodePath = `${basePath}/${entry.name}`;
-          
-          if (entry.kind === 'file' && (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))) {
+
+          if (
+            entry.kind === 'file' &&
+            (entry.name.endsWith('.md') || entry.name.endsWith('.markdown'))
+          ) {
             nodes.push({
               name: entry.name,
               path: nodePath,
               isDir: false,
-              handle: entry
+              handle: entry,
             });
           } else if (entry.kind === 'directory') {
-            const childNodes = await readDirectoryRecursive(entry as FileSystemDirectoryHandle, nodePath);
+            const childNodes = await readDirectoryRecursive(
+              entry as FileSystemDirectoryHandle,
+              nodePath,
+            );
             nodes.push({
               name: entry.name,
               path: nodePath,
               isDir: true,
               handle: entry,
-              children: childNodes
+              children: childNodes,
             });
           }
         }
-        
+
         nodes.sort((a, b) => {
           if (a.isDir && !b.isDir) return -1;
           if (!a.isDir && b.isDir) return 1;
           return a.name.localeCompare(b.name);
         });
-        
+
         return nodes;
       };
-      
+
       const tree = await readDirectoryRecursive(rootHandle, rootPath);
       set({ fileTree: tree, isLoading: false });
     } catch (err) {
@@ -138,7 +144,7 @@ export const useFileStore = create<FileState>((set, get) => ({
   setRootHandle: (handle: FileSystemDirectoryHandle | null) => {
     set({ rootHandle: handle });
   },
-  
+
   clearAll: () => {
     set({
       rootPath: null,

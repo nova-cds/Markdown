@@ -59,11 +59,7 @@ function findParentPane(pane: Pane, targetId: string, parent: Pane | null = null
   return null;
 }
 
-function replacePaneInTree(
-  pane: Pane,
-  targetId: string,
-  newPane: Pane
-): Pane {
+function replacePaneInTree(pane: Pane, targetId: string, newPane: Pane): Pane {
   if (pane.id === targetId) return newPane;
   if (pane.type === 'split') {
     return {
@@ -77,21 +73,18 @@ function replacePaneInTree(
   return pane;
 }
 
-function removePaneFromTree(
-  pane: Pane,
-  targetId: string
-): Pane | null {
+function removePaneFromTree(pane: Pane, targetId: string): Pane | null {
   if (pane.type === 'leaf') {
     return pane.id === targetId ? null : pane;
   }
-  
+
   const left = removePaneFromTree(pane.children[0], targetId);
   const right = removePaneFromTree(pane.children[1], targetId);
-  
+
   if (!left && !right) return null;
   if (!left) return right;
   if (!right) return left;
-  
+
   return {
     ...pane,
     children: [left, right] as [Pane, Pane],
@@ -117,10 +110,10 @@ function getFirstLeafPane(pane: Pane): PaneLeaf {
 function getNextPaneInDirection(
   pane: Pane,
   activePaneId: string,
-  direction: 'up' | 'down' | 'left' | 'right'
+  direction: 'up' | 'down' | 'left' | 'right',
 ): PaneLeaf | null {
   const leaves: { pane: PaneLeaf; path: { pane: Pane; index: number }[] }[] = [];
-  
+
   function collectLeaves(p: Pane, path: { pane: Pane; index: number }[] = []) {
     if (p.type === 'leaf') {
       leaves.push({ pane: p, path });
@@ -129,28 +122,28 @@ function getNextPaneInDirection(
       collectLeaves(p.children[1], [...path, { pane: p, index: 1 }]);
     }
   }
-  
+
   collectLeaves(pane);
-  
-  const activeIndex = leaves.findIndex(l => l.pane.id === activePaneId);
+
+  const activeIndex = leaves.findIndex((l) => l.pane.id === activePaneId);
   if (activeIndex === -1) return null;
-  
+
   const activeLeaf = leaves[activeIndex];
-  
+
   for (let i = 0; i < leaves.length; i++) {
     if (i === activeIndex) continue;
     const candidate = leaves[i];
-    
+
     if (direction === 'left' || direction === 'right') {
       const activePath = activeLeaf.path;
       const candidatePath = candidate.path;
-      
+
       for (let j = 0; j < Math.min(activePath.length, candidatePath.length); j++) {
         const activeNode = activePath[j];
         const candidateNode = candidatePath[j];
-        
+
         if (activeNode.pane.id !== candidateNode.pane.id) continue;
-        
+
         if (activeNode.pane.type === 'split' && activeNode.pane.direction === 'vertical') {
           if (direction === 'left' && activeNode.index === 1 && candidateNode.index === 0) {
             return candidate.pane;
@@ -161,17 +154,17 @@ function getNextPaneInDirection(
         }
       }
     }
-    
+
     if (direction === 'up' || direction === 'down') {
       const activePath = activeLeaf.path;
       const candidatePath = candidate.path;
-      
+
       for (let j = 0; j < Math.min(activePath.length, candidatePath.length); j++) {
         const activeNode = activePath[j];
         const candidateNode = candidatePath[j];
-        
+
         if (activeNode.pane.id !== candidateNode.pane.id) continue;
-        
+
         if (activeNode.pane.type === 'split' && activeNode.pane.direction === 'horizontal') {
           if (direction === 'up' && activeNode.index === 1 && candidateNode.index === 0) {
             return candidate.pane;
@@ -183,24 +176,24 @@ function getNextPaneInDirection(
       }
     }
   }
-  
+
   if (direction === 'left' && activeIndex > 0) return leaves[activeIndex - 1].pane;
   if (direction === 'right' && activeIndex < leaves.length - 1) return leaves[activeIndex + 1].pane;
   if (direction === 'up' && activeIndex > 0) return leaves[activeIndex - 1].pane;
   if (direction === 'down' && activeIndex < leaves.length - 1) return leaves[activeIndex + 1].pane;
-  
+
   return null;
 }
 
 interface SplitStore {
   tabSplitStates: Record<string, TabSplitState>;
   maxPanes: number;
-  
+
   getCurrentState: (tabPath: string) => TabSplitState | null;
   getActiveDocPath: (tabPath: string) => string | null;
   getPaneCount: (tabPath: string) => number;
   getDocumentsInPanes: (tabPath: string) => string[];
-  
+
   initTabSplitState: (tabPath: string, docPath: string | null) => void;
   splitPane: (tabPath: string, paneId: string, direction: SplitDirection) => boolean;
   closePane: (tabPath: string, paneId: string) => string | null;
@@ -215,11 +208,11 @@ interface SplitStore {
 export const useSplitStore = create<SplitStore>((set, get) => ({
   tabSplitStates: {},
   maxPanes: 4,
-  
+
   getCurrentState: (tabPath: string) => {
     return get().tabSplitStates[tabPath] || null;
   },
-  
+
   getActiveDocPath: (tabPath: string) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return null;
@@ -227,23 +220,23 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
     if (pane && pane.type === 'leaf') return pane.docPath;
     return null;
   },
-  
+
   getPaneCount: (tabPath: string) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return 0;
     return countLeafPanes(state.paneTree);
   },
-  
+
   getDocumentsInPanes: (tabPath: string) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return [];
     return getAllDocumentsInPanes(state.paneTree);
   },
-  
+
   initTabSplitState: (tabPath: string, docPath: string | null) => {
     const existing = get().tabSplitStates[tabPath];
     if (existing) return;
-    
+
     const leafPane = createLeafPane(docPath);
     set({
       tabSplitStates: {
@@ -256,32 +249,30 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
       },
     });
   },
-  
+
   splitPane: (tabPath: string, paneId: string, direction: SplitDirection) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return false;
-    
+
     const currentCount = countLeafPanes(state.paneTree);
     if (currentCount >= get().maxPanes) {
       return false;
     }
-    
+
     const targetPane = findPaneById(state.paneTree, paneId);
     if (!targetPane || targetPane.type !== 'leaf') return false;
-    
+
     const newLeafPane = createLeafPane(null);
     const newSplitPane: PaneSplit = {
       id: generatePaneId(),
       type: 'split',
       direction,
-      children: direction === 'vertical' 
-        ? [targetPane, newLeafPane] 
-        : [targetPane, newLeafPane],
+      children: direction === 'vertical' ? [targetPane, newLeafPane] : [targetPane, newLeafPane],
       ratio: 0.5,
     };
-    
+
     const newTree = replacePaneInTree(state.paneTree, paneId, newSplitPane);
-    
+
     set({
       tabSplitStates: {
         ...get().tabSplitStates,
@@ -292,25 +283,24 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
         },
       },
     });
-    
+
     return true;
   },
-  
+
   closePane: (tabPath: string, paneId: string): string | null => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return null;
-    
+
     const newTree = removePaneFromTree(state.paneTree, paneId);
-    
+
     if (!newTree) return null;
-    
-    const newActivePane = state.activePaneId === paneId
-      ? getFirstLeafPane(newTree).id
-      : state.activePaneId;
-    
+
+    const newActivePane =
+      state.activePaneId === paneId ? getFirstLeafPane(newTree).id : state.activePaneId;
+
     const activePane = findPaneById(newTree, newActivePane);
     const newActiveDocPath = activePane && activePane.type === 'leaf' ? activePane.docPath : null;
-    
+
     set({
       tabSplitStates: {
         ...get().tabSplitStates,
@@ -321,20 +311,20 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
         },
       },
     });
-    
+
     return newActiveDocPath;
   },
-  
+
   setPaneDocument: (tabPath: string, paneId: string, docPath: string | null) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return;
-    
+
     const targetPane = findPaneById(state.paneTree, paneId);
     if (!targetPane || targetPane.type !== 'leaf') return;
-    
+
     const newLeafPane: PaneLeaf = { ...targetPane, docPath };
     const newTree = replacePaneInTree(state.paneTree, paneId, newLeafPane);
-    
+
     set({
       tabSplitStates: {
         ...get().tabSplitStates,
@@ -345,14 +335,14 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
       },
     });
   },
-  
+
   setActivePane: (tabPath: string, paneId: string) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return;
-    
+
     const pane = findPaneById(state.paneTree, paneId);
     if (!pane) return;
-    
+
     set({
       tabSplitStates: {
         ...get().tabSplitStates,
@@ -363,18 +353,18 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
       },
     });
   },
-  
+
   setSplitRatio: (tabPath: string, splitPaneId: string, ratio: number) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return;
-    
+
     const targetPane = findPaneById(state.paneTree, splitPaneId);
     if (!targetPane || targetPane.type !== 'split') return;
-    
+
     const clampedRatio = Math.max(0.1, Math.min(0.9, ratio));
     const newSplitPane: PaneSplit = { ...targetPane, ratio: clampedRatio };
     const newTree = replacePaneInTree(state.paneTree, splitPaneId, newSplitPane);
-    
+
     set({
       tabSplitStates: {
         ...get().tabSplitStates,
@@ -385,16 +375,16 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
       },
     });
   },
-  
+
   cleanupTabSplitState: (tabPath: string) => {
     const { [tabPath]: _, ...rest } = get().tabSplitStates;
     set({ tabSplitStates: rest });
   },
-  
+
   focusNextPane: (tabPath: string, direction: 'up' | 'down' | 'left' | 'right') => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return;
-    
+
     const nextPane = getNextPaneInDirection(state.paneTree, state.activePaneId, direction);
     if (nextPane) {
       set({
@@ -408,7 +398,7 @@ export const useSplitStore = create<SplitStore>((set, get) => ({
       });
     }
   },
-  
+
   canSplit: (tabPath: string) => {
     const state = get().tabSplitStates[tabPath];
     if (!state) return false;

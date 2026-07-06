@@ -17,7 +17,7 @@ export const useSplitShortcuts = () => {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault();
           e.stopPropagation();
-          
+
           if (canSplit(activeTabPath)) {
             const splitState = getCurrentState(activeTabPath);
             if (splitState) {
@@ -30,7 +30,7 @@ export const useSplitShortcuts = () => {
         if (e.key === '-' || e.key === '_') {
           e.preventDefault();
           e.stopPropagation();
-          
+
           if (canSplit(activeTabPath)) {
             const splitState = getCurrentState(activeTabPath);
             if (splitState) {
@@ -43,14 +43,14 @@ export const useSplitShortcuts = () => {
         if (e.key.toLowerCase() === 'w') {
           e.preventDefault();
           e.stopPropagation();
-          
+
           const splitState = getCurrentState(activeTabPath);
           if (splitState && splitState.activePaneId) {
             const newActiveDocPath = closePane(activeTabPath, splitState.activePaneId);
             if (newActiveDocPath !== undefined && newActiveDocPath !== null) {
-              useEditorStore.setState({ 
+              useEditorStore.setState({
                 activeDocPath: newActiveDocPath,
-                activeTabPath: activeTabPath
+                activeTabPath: activeTabPath,
               });
             }
           }
@@ -60,7 +60,7 @@ export const useSplitShortcuts = () => {
 
       if (e.altKey && !e.shiftKey && !e.ctrlKey) {
         let direction: 'up' | 'down' | 'left' | 'right' | null = null;
-        
+
         if (e.key === 'ArrowLeft') {
           direction = 'left';
         } else if (e.key === 'ArrowRight') {

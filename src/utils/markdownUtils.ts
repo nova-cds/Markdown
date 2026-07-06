@@ -28,11 +28,11 @@ export function isMarkdownFile(filename: string): boolean {
  */
 export function extractImagePaths(content: string): string[] {
   if (!content) return [];
-  
+
   // 匹配 Markdown 图片语法：![...](path) 或 ![...](path "title")
   const imageRegex = /!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
   const paths: string[] = [];
-  
+
   let match: RegExpExecArray | null;
   while ((match = imageRegex.exec(content)) !== null) {
     const path = match[1];
@@ -40,7 +40,7 @@ export function extractImagePaths(content: string): string[] {
       paths.push(path);
     }
   }
-  
+
   return paths;
 }
 
@@ -55,15 +55,12 @@ export function extractImagePaths(content: string): string[] {
  */
 export function getImageAlt(src: string): string {
   if (!src) return '';
-  
+
   // 提取文件名（不含扩展名）
-  const fileName = src
-    .replace(/\\/g, '/')
-    .split('/')
-    .pop() || '';
-  
+  const fileName = src.replace(/\\/g, '/').split('/').pop() || '';
+
   const nameWithoutExt = fileName.replace(/\.[^.]+$/, '');
-  
+
   // 将下划线和连字符替换为空格
   return nameWithoutExt.replace(/[-_]+/g, ' ').trim();
 }

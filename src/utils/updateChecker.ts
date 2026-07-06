@@ -65,18 +65,18 @@ function shouldClearCache(cached: CachedUpdate): boolean {
   if (compareVersions(cached.latestVersion, `v${version}`) <= 0) {
     return true;
   }
-  
+
   if (cached.cachedVersion !== version) {
     return true;
   }
-  
+
   return false;
 }
 
 export async function checkForUpdate(): Promise<UpdateInfo | null> {
   try {
     const cached = getCachedUpdate();
-    
+
     if (cached) {
       if (shouldClearCache(cached)) {
         clearUpdateCache();
@@ -89,9 +89,9 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
       'https://api.github.com/repos/KoniKee/TMD_Type-Markdown/releases/latest',
       {
         headers: {
-          'Accept': 'application/vnd.github.v3+json',
+          Accept: 'application/vnd.github.v3+json',
         },
-      }
+      },
     );
 
     if (!response.ok) {

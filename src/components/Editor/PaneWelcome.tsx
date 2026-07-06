@@ -14,12 +14,8 @@ export const PaneWelcome: React.FC<PaneWelcomeProps> = ({ onNewFile, onOpenFile 
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-[var(--editor-link)] bg-opacity-10 mb-3">
             <span className="text-3xl">📄</span>
           </div>
-          <h2 className="text-lg font-medium text-[var(--editor-text)] mb-1">
-            空窗格
-          </h2>
-          <p className="text-sm text-[var(--editor-text)] opacity-60">
-            在此窗格中打开文档
-          </p>
+          <h2 className="text-lg font-medium text-[var(--editor-text)] mb-1">空窗格</h2>
+          <p className="text-sm text-[var(--editor-text)] opacity-60">在此窗格中打开文档</p>
         </div>
 
         <div className="flex flex-col gap-2">
