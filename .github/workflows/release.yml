@@ -33,16 +33,16 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create release
+      - name: Create release (allow failure if already exists)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "v${{ steps.verify.outputs.tag }}" \
             --title "MD Editor v${{ steps.verify.outputs.tag }}" \
             --notes "See the assets to download and install this version." \
-            --target main
+            --target main || echo "release exists, continuing"
 
-  # 阶段 2: 三平台并行编译
+  # 阶段 2: 三平台并行编译 + 上传到 release
   build:
     name: Build (${{ matrix.platform }})
     needs: prepare
@@ -52,10 +52,13 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            args: --bundles nsis
           - platform: macos-latest
             target: x86_64-apple-darwin
+            args: --bundles app,dmg
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            args: --bundles deb
 
     runs-on: ${{ matrix.platform }}
 
@@ -105,74 +108,21 @@ jobs:
       - name: Build Tauri app
         shell: bash
         run: |
-          BUNDLES=""
+          npm run tauri build -- ${{ matrix.args }}
+
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ needs.prepare.outputs.version }}"
+          cd src-tauri/target/release/bundle
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            BUNDLES="--bundles nsis"
-          elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
-            BUNDLES="--bundles deb"
+            find nsis -type f -name "*.exe" -exec gh release upload "$TAG" {} --clobber \;
+            find . -maxdepth 1 -type f -name "*.exe" -exec gh release upload "$TAG" {} --clobber \;
+          elif [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            find dmg -type f \( -name "*.dmg" -o -name "*.pkg" \) -exec gh release upload "$TAG" {} --clobber \;
+            find macos -type f \( -name "*.app" -o -name "*.app.tar.gz" \) -exec gh release upload "$TAG" {} --clobber \;
           else
-            BUNDLES="--bundles app,dmg"
+            find deb -type f -name "*.deb" -exec gh release upload "$TAG" {} --clobber \;
+            find appimage -type f -name "*.AppImage" -exec gh release upload "$TAG" {} --clobber \;
           fi
-          npm run tauri build -- $BUNDLES
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: md-editor-${{ matrix.platform }}
-          path: |
-            src-tauri/target/release/bundle/**/*
-            src-tauri/target/release/*.exe
-
-  # 阶段 3: 把所有平台的产物上传到 release
-  publish:
-    name: Publish to release
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: md-editor-windows-latest
-          path: artifacts/windows
-
-      - name: Download macOS artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: md-editor-macos-latest
-          path: artifacts/macos
-
-      - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: md-editor-ubuntu-22.04
-          path: artifacts/linux
-
-      - name: Upload Windows assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="v${{ needs.prepare.outputs.version }}"
-          find artifacts/windows -type f \( -name "*.exe" -o -name "*.msi" \) -exec \
-            gh release upload "$TAG" {} --clobber \;
-
-      - name: Upload macOS assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="v${{ needs.prepare.outputs.version }}"
-          find artifacts/macos -type f \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.app" \) -exec \
-            gh release upload "$TAG" {} --clobber \;
-
-      - name: Upload Linux assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="v${{ needs.prepare.outputs.version }}"
-          find artifacts/linux -type f \( -name "*.deb" -o -name "*.AppImage" \) -exec \
-            gh release upload "$TAG" {} --clobber \;
-
-      - name: Mark release as latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release edit "v${{ needs.prepare.outputs.version }}" --draft=false
