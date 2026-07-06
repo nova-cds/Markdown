@@ -103,9 +103,17 @@ jobs:
         run: npm run build
 
       - name: Build Tauri app
+        shell: bash
         run: |
-          npm run tauri build -- \
-            ${{ matrix.platform == 'windows-latest' && '--bundles nsis' || (matrix.platform == 'ubuntu-22.04' && '--bundles deb' || '--bundles app,dmg') }}
+          BUNDLES=""
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            BUNDLES="--bundles nsis"
+          elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
+            BUNDLES="--bundles deb"
+          else
+            BUNDLES="--bundles app,dmg"
+          fi
+          npm run tauri build -- $BUNDLES
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
