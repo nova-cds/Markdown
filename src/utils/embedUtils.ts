@@ -4,7 +4,7 @@ import {
   readMdFileContent,
   getFileDisplayName,
   normalizePath,
-  getFileName,
+  getFileName as _getFileName,
 } from './linkUtils';
 
 export interface EmbedSettings {
@@ -93,7 +93,7 @@ export function createEmbedLoading(mdPath: string): string {
 }
 
 export function createEmbedWarning(message: string, mdPath?: string): string {
-  const displayName = mdPath ? getFileDisplayName(mdPath) : '';
+  const _displayName = mdPath ? getFileDisplayName(mdPath) : '';
   return `<div class="embed-container embed-container--warning">
     <div class="embed-warning">
       <span class="embed-warning-icon">⚠️</span>

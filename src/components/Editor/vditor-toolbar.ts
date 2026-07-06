@@ -1,0 +1,216 @@
+// Vditor 工具栏和表情配置
+// 从 VditorEditor.tsx 提取的工具栏配置和表情数据
+
+// 表情数据
+export const EMOJI_DATA: Record<string, string> = {
+  // 常用表情
+  smile: '😊',
+  laugh: '😄',
+  wink: '😉',
+  love: '😍',
+  cool: '😎',
+  think: '🤔',
+  sad: '😢',
+  cry: '😭',
+  angry: '😠',
+  surprised: '😮',
+  sleepy: '😴',
+  sick: '🤒',
+  // 手势
+  ok: '👌',
+  thumbsup: '👍',
+  thumbsdown: '👎',
+  clap: '👏',
+  pray: '🙏',
+  fist: '✊',
+  victory: '✌️',
+  muscle: '💪',
+  // 爱心
+  heart: '❤️',
+  blue_heart: '💙',
+  green_heart: '💚',
+  yellow_heart: '💛',
+  purple_heart: '💜',
+  sparkling_heart: '💖',
+  // 符号
+  check: '✅',
+  cross: '❌',
+  warning: '⚠️',
+  star: '⭐',
+  sparkles: '✨',
+  fire: '🔥',
+  rocket: '🚀',
+  bulb: '💡',
+  // 物品
+  book: '📖',
+  pencil: '📝',
+  memo: '📋',
+  link: '🔗',
+  lock: '🔒',
+  key: '🔑',
+  computer: '💻',
+  email: '📧',
+  phone: '📞',
+  camera: '📷',
+  // 自然
+  sunny: '☀️',
+  cloud: '☁️',
+  rainbow: '🌈',
+  flower: '🌸',
+  tree: '🌳',
+  apple: '🍎',
+  banana: '🍌',
+  watermelon: '🍉',
+  // 动物
+  dog: '🐕',
+  cat: '🐱',
+  rabbit: '🐰',
+  panda: '🐼',
+  bird: '🐦',
+  fish: '🐟',
+  butterfly: '🦋',
+  bee: '🐝',
+  // 食物
+  coffee: '☕',
+  tea: '🍵',
+  beer: '🍺',
+  cake: '🍰',
+  pizza: '🍕',
+  burger: '🍔',
+  ramen: '🍜',
+  sushi: '🍣',
+  // 运动
+  soccer: '⚽',
+  basketball: '🏀',
+  tennis: '🎾',
+  trophy: '🏆',
+  medal: '🏅',
+  gold: '🥇',
+  silver: '🥈',
+  bronze: '🥉',
+  // 庆祝
+  party: '🎉',
+  gift: '🎁',
+  crown: '👑',
+  bell: '🔔',
+  balloon: '🎈',
+  fireworks: '🎆',
+  christmas: '🎄',
+};
+
+// 工具栏配置
+export const TOOLBAR_CONFIG: Array<string | IMenuItem> = [
+  {
+    name: 'emoji',
+    tip: '表情',
+    tipPosition: 's',
+  },
+  {
+    name: 'headings',
+    tip: '标题',
+    tipPosition: 's',
+  },
+  {
+    name: 'bold',
+    tip: '粗体 | Ctrl+B',
+    tipPosition: 's',
+  },
+  {
+    name: 'italic',
+    tip: '斜体 | Ctrl+I',
+    tipPosition: 's',
+  },
+  {
+    name: 'strike',
+    tip: '删除线 | Ctrl+D',
+    tipPosition: 's',
+  },
+  {
+    name: 'link',
+    tip: '链接 | Ctrl+K',
+    tipPosition: 's',
+  },
+  '|',
+  {
+    name: 'list',
+    tip: '无序列表',
+    tipPosition: 's',
+  },
+  {
+    name: 'ordered-list',
+    tip: '有序列表',
+    tipPosition: 's',
+  },
+  {
+    name: 'check',
+    tip: '任务列表',
+    tipPosition: 's',
+  },
+  {
+    name: 'outdent',
+    tip: '减少缩进',
+    tipPosition: 's',
+  },
+  {
+    name: 'indent',
+    tip: '增加缩进',
+    tipPosition: 's',
+  },
+  '|',
+  {
+    name: 'quote',
+    tip: '引用',
+    tipPosition: 's',
+  },
+  {
+    name: 'line',
+    tip: '分割线',
+    tipPosition: 's',
+  },
+  {
+    name: 'code',
+    tip: '代码块',
+    tipPosition: 's',
+  },
+  {
+    name: 'inline-code',
+    tip: '行内代码 | Ctrl+`',
+    tipPosition: 's',
+  },
+  {
+    name: 'table',
+    tip: '表格 | Ctrl+M\n━━━━━━━━━━━━━\n添加行: Ctrl+=\n删除行: Ctrl+-\n添加列: Ctrl+Shift+=\n删除列: Ctrl+Shift+-\n上插行: Ctrl+Shift+F\n左插列: Ctrl+Shift+G',
+    tipPosition: 's',
+  },
+  '|',
+  {
+    name: 'undo',
+    tip: '撤销 | Ctrl+Z',
+    tipPosition: 's',
+  },
+  {
+    name: 'redo',
+    tip: '重做 | Ctrl+Shift+Z',
+    tipPosition: 's',
+  },
+  '|',
+  {
+    name: 'outline',
+    tip: '大纲',
+    tipPosition: 's',
+  },
+  {
+    name: 'edit-mode',
+    tip: '编辑模式',
+    tipPosition: 's',
+  },
+  {
+    name: 'preview',
+    tip: '预览',
+    tipPosition: 's',
+  },
+  {
+    name: 'more',
+    toolbar: ['export', 'fullscreen', 'devtools', 'info', 'help'],
+  },
+];

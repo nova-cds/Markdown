@@ -40,7 +40,7 @@ export const waitForTauri = async (): Promise<boolean> => {
     _isTauriAsyncCache = result;
     _isTauriCache = result;
     return result;
-  } catch (e) {
+  } catch (_e) {
     _isTauriAsyncCache = false;
     return false;
   }

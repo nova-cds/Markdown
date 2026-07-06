@@ -145,7 +145,7 @@ export const Sidebar: React.FC = () => {
   const [newDirState, setNewDirState] = useState<NewDirState | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
-  const [selectedDir, setSelectedDir] = useState<string | null>(null);
+  const [_selectedDir, setSelectedDir] = useState<string | null>(null);
 
   const renameInputRef = useRef<HTMLInputElement>(null);
   const newFileInputRef = useRef<HTMLInputElement>(null);
@@ -620,7 +620,7 @@ export const Sidebar: React.FC = () => {
   const finishDelete = async () => {
     if (!deleteState) return;
 
-    const { path, name, isDir } = deleteState;
+    const { path, name: _name, isDir } = deleteState;
 
     try {
       const absolutePath = toAbsolutePath(path);
@@ -727,7 +727,7 @@ export const Sidebar: React.FC = () => {
       const isExpanded = expandedDirs.has(node.path);
       const isHovered = hoveredPath === node.path;
       const Icon = getFileIcon(node.name, node.isDir, isExpanded);
-      const isLast = index === nodes.length - 1;
+      const _isLast = index === nodes.length - 1;
 
       return (
         <div key={node.path} className="relative">

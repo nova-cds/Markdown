@@ -45,7 +45,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       setTheme: (theme: Theme) => set({ theme }),
       toggleTheme: () => {
-        const { theme, getEffectiveTheme } = get();
+        const { theme: _theme, getEffectiveTheme } = get();
         const currentEffective = getEffectiveTheme();
         // 如果当前是暗色，切换到浅色；否则切换到暗色
         set({ theme: currentEffective === 'dark' ? 'light' : 'dark' });

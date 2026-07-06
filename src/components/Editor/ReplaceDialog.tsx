@@ -101,7 +101,7 @@ export const ReplaceDialog: React.FC<ReplaceDialogProps> = ({ isOpen, onClose, v
   /**
    * 统计匹配数量
    */
-  const countMatches = useCallback(() => {
+  const _countMatches = useCallback(() => {
     if (!findText || !vditor) return 0;
 
     const content = vditor.getValue();

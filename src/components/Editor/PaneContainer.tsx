@@ -4,7 +4,7 @@ import {
   useEditorStore,
   useFileStore,
   Pane,
-  PaneLeaf,
+  PaneLeaf as _PaneLeaf,
   PaneSplit,
   SplitDirection,
 } from '../../stores';
@@ -36,7 +36,7 @@ export const PaneContainer: React.FC<PaneContainerProps> = ({ tabPath }) => {
   const splitState = useSplitStore((state) => state.getCurrentState(tabPath));
   const activePaneId = splitState?.activePaneId;
   const initTabSplitState = useSplitStore((state) => state.initTabSplitState);
-  const splitPaneAction = useSplitStore((state) => state.splitPane);
+  const _splitPaneAction = useSplitStore((state) => state.splitPane);
   const closePane = useSplitStore((state) => state.closePane);
   const setPaneDocument = useSplitStore((state) => state.setPaneDocument);
   const setActivePane = useSplitStore((state) => state.setActivePane);

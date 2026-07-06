@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useSettingsStore } from '../stores';
 
-type Theme = 'light' | 'dark' | 'system';
+type _Theme = 'light' | 'dark' | 'system';
 
 /**
  * 主题管理 Hook

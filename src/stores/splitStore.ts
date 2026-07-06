@@ -48,12 +48,12 @@ function findPaneById(pane: Pane, id: string): Pane | null {
   return null;
 }
 
-function findParentPane(pane: Pane, targetId: string, parent: Pane | null = null): Pane | null {
+function _findParentPane(pane: Pane, targetId: string, parent: Pane | null = null): Pane | null {
   if (pane.id === targetId) return parent;
   if (pane.type === 'split') {
     return (
-      findParentPane(pane.children[0], targetId, pane) ||
-      findParentPane(pane.children[1], targetId, pane)
+      _findParentPane(pane.children[0], targetId, pane) ||
+      _findParentPane(pane.children[1], targetId, pane)
     );
   }
   return null;

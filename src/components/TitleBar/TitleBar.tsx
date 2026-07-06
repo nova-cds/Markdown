@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEditorStore, useSettingsStore, useUpdateStore, useSplitStore } from '../../stores';
 import { useSaveToFile, getFileName } from '../../hooks/useAutoSave';
 import { isTauriCached } from '../../utils/platform';
@@ -56,19 +56,35 @@ export const TitleBar: React.FC = () => {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [pendingCloseTab, setPendingCloseTab] = useState<string | null>(null);
   const [pendingCloseDocuments, setPendingCloseDocuments] = useState<string[]>([]);
+  const unlistenRef = useRef<(() => void) | null>(null);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
     const win = getTauriWindow();
     if (win && window.__TAURI__?.event) {
-      win.isMaximized().then(setIsMaximized);
-      let unlistenFn: (() => void) | null = null;
+      win.isMaximized().then((maximized) => {
+        if (isMountedRef.current) setIsMaximized(maximized);
+      });
       window.__TAURI__.event.listen('tauri://resize', async () => {
-        setIsMaximized(await win.isMaximized());
+        if (isMountedRef.current) {
+          setIsMaximized(await win.isMaximized());
+        }
       }).then((fn) => {
-        unlistenFn = fn;
+        if (isMountedRef.current) {
+          unlistenRef.current = fn;
+        } else {
+          // 组件已卸载，立即清理避免泄漏
+          fn();
+        }
       });
       return () => {
-        unlistenFn?.();
+        isMountedRef.current = false;
+        const unlisten = unlistenRef.current;
+        if (unlisten) {
+          unlisten();
+          unlistenRef.current = null;
+        }
       };
     }
   }, []);
@@ -103,7 +119,7 @@ export const TitleBar: React.FC = () => {
 
   const handleCloseTab = (tabPath: string) => {
     const paneCount = getPaneCount(tabPath);
-    const splitState = getCurrentState(tabPath);
+    const _splitState = getCurrentState(tabPath);
     const docsInPanes = getDocumentsInPanes(tabPath);
 
     const hasMultiplePanes = paneCount > 1;
@@ -174,7 +190,7 @@ export const TitleBar: React.FC = () => {
 
       for (const docPath of pendingCloseDocuments) {
         if (docPath !== pendingCloseTab) {
-          const { documents, activeDocPath } = useEditorStore.getState();
+          const { documents, activeDocPath: _activeDocPath } = useEditorStore.getState();
           if (documents[docPath]) {
             const { [docPath]: _, ...restDocs } = documents;
             useEditorStore.setState({ documents: restDocs });
@@ -218,7 +234,7 @@ export const TitleBar: React.FC = () => {
             <div className="flex items-end h-full flex-1 min-w-0" data-tauri-drag-region>
               {tabs.map((tabPath) => {
                 const isActive = tabPath === activeTabPath;
-                const paneCount = getPaneCount(tabPath);
+                const _paneCount = getPaneCount(tabPath);
                 const hasSplitState = getCurrentState(tabPath) !== null;
                 const activePaneDoc = hasSplitState && isActive ? getActiveDocPath(tabPath) : null;
                 const displayDocPath = activePaneDoc || tabPath;

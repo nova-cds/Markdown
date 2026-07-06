@@ -29,9 +29,9 @@ function loadFromStorage(): {
   activeDocPath: string | null;
 } {
   try {
-    const savedDocs = JSON.parse(localStorage.getItem(STORAGE_KEY_DOCS) || '{}');
-    const savedTabs = JSON.parse(localStorage.getItem(STORAGE_KEY_TABS) || '[]');
-    const savedActivePath = localStorage.getItem(STORAGE_KEY_ACTIVE_PATH);
+    const _savedDocs = JSON.parse(localStorage.getItem(STORAGE_KEY_DOCS) || '{}');
+    const _savedTabs = JSON.parse(localStorage.getItem(STORAGE_KEY_TABS) || '[]');
+    const _savedActivePath = localStorage.getItem(STORAGE_KEY_ACTIVE_PATH);
 
     const documents: Record<string, DocumentState> = {};
 
